@@ -2108,20 +2108,20 @@ summary:focus-visible {
         <label class="setting-label">難易度（出題範囲）</label>
         <div class="option-grid" id="opt-difficulty" role="radiogroup" aria-label="難易度">
           <button type="button" class="opt-btn selected" data-value="basic">
-            <strong>基礎編</strong>
+            <strong>基礎編（定性分析 2回）</strong>
             <span>脂肪族の基本 (C2〜C4)</span>
           </button>
           <button type="button" class="opt-btn" data-value="standard">
-            <strong>標準編</strong>
+            <strong>標準編（定性分析 3回）</strong>
             <span>C₅H₁₀O₂全網羅・不飽和・異性体</span>
           </button>
           <button type="button" class="opt-btn" data-value="advanced">
-            <strong>難関編</strong>
+            <strong>難関編（定性分析 4回）</strong>
             <span>芳香族・サリチル酸・アミン/アミド</span>
           </button>
           <button type="button" class="opt-btn" data-value="all">
-            <strong>総合演習</strong>
-            <span>全38化合物からランダム</span>
+            <strong>総合演習（2〜4回）</strong>
+            <span>全38化合物・難易度別に回数変化</span>
           </button>
         </div>
       </div>
@@ -2135,7 +2135,7 @@ summary:focus-visible {
           </button>
           <button type="button" class="opt-btn" data-value="skip">
             <strong>スキップ（サクッと）</strong>
-            <span>分子式を提示して実験から開始</span>
+            <span>分子式を提示して推理から開始</span>
           </button>
         </div>
       </div>
@@ -2248,11 +2248,11 @@ summary:focus-visible {
               <input type="number" inputmode="numeric" id="in-n" min="0" max="5" step="1" value="0" required placeholder="0">
             </label>
             <label class="num-field ihd-field">
-              <span>不飽和度</span>
-              <input type="number" inputmode="numeric" id="in-ihd" min="0" max="15" step="1" required placeholder="IHD">
+              <span>不飽和度(任意)</span>
+              <input type="number" inputmode="numeric" id="in-ihd" min="0" max="15" step="1" placeholder="空欄OK">
             </label>
           </div>
-          <button type="submit" class="btn-primary btn-lg">✅ 分子式と不飽和度を提出</button>
+          <button type="submit" class="btn-primary btn-lg">✅ 分子式を提出する</button>
         </form>
 
         <!-- 簡易化学電卓 -->
@@ -2304,6 +2304,7 @@ summary:focus-visible {
           <h2 class="panel-heading">🔬 Phase 2：実験結果から構造を推理</h2>
           <div class="head-btn-group">
             <span class="clue-progress-pill" id="clue-progress">レポート 1 / 2</span>
+            <button type="button" class="btn-subtle" id="btn-ihd-check" title="任意：分子式から不飽和度(IHD)を調べる">📐 不飽和度(任意)</button>
             <button type="button" class="btn-subtle" id="btn-lab-hint">💡 ヒント</button>
           </div>
         </div>
@@ -4949,18 +4950,219 @@ const CUSTOM_CLUES = {
 };
 
 /**
- * 化合物に対する教授の実験レポートステップ一覧を返す（選択肢は毎回シャッフル）
+ * 任意の不飽和度 (IHD) 解説テキストを返す（Phase 2 の「📐 不飽和度(任意)」ボタン用）
+ */
+function getIhdHint(compound) {
+  const { calcIHD, formatFormulaText } = window.ChemLab;
+  const f = compound.formula;
+  const ihd = calcIHD(f);
+  const fText = formatFormulaText(f);
+  const hasN = (f.N || 0) > 0;
+  const formulaExpr = hasN ? `(2×${f.C} + 2 + ${f.N} − ${f.H}) ÷ 2 = ${ihd}` : `(2×${f.C} + 2 − ${f.H}) ÷ 2 = ${ihd}`;
+
+  let meaning = '';
+  if (ihd === 0) meaning = '二重結合や環はなし（飽和アルコールまたはエーテル）。';
+  else if (ihd === 1) meaning = f.O >= 2 ? 'C=O を1つ含む（カルボン酸またはエステルが有力）。' : 'C=O（アルデヒド・ケトン）または C=C を1つ含む。';
+  else if (ihd === 3) meaning = '2つの -COOH (2) ＋ 1つの C=C (1) など計3つの不飽和構造。';
+  else if (ihd === 4) meaning = 'ベンゼン環（不飽和度4）を1つ含み、側鎖に二重結合はない。';
+  else if (ihd === 5) meaning = 'ベンゼン環 (4) ＋ C=O や N=O などの二重結合を1つ含む。';
+  else meaning = `ベンゼン環 (4) ＋ カルボニル基などの二重結合を ${ihd - 4} 個含む。`;
+
+  return {
+    ihd,
+    note: `不飽和度 IHD = ${ihd}（${fText}）：${meaning}`,
+    dialogue: `【任意の不飽和度チェック】\n${fText} の不飽和度は ${formulaExpr} だぞ！\n→ ${meaning}`,
+  };
+}
+
+/**
+ * 難関編（4ステップ）用の追加定性実験ステップ（第3ステップ）を生成
+ */
+function buildExtraAdvancedStep(compound) {
+  const t = compound.tests;
+  const f = compound.formula;
+  const usedNames = (CUSTOM_CLUES[compound.id] || []).map((s) => s.reagent).join(' ');
+
+  // 1) 金属Naが未出題なら金属Naで活性水素(-OH/-COOH)を確認
+  if (!usedNames.includes('金属 Na') && !usedNames.includes('金属ナトリウム')) {
+    const pos = !!(t.sodium && t.sodium.positive);
+    return {
+      reagent: '追加実験：金属ナトリウム (Na) 投入',
+      effect: pos ? 'bubbles' : 'none',
+      observation: pos
+        ? '乾燥した試料 X に金属 Na を加えると、水素（H₂）の気泡が発生した。'
+        : '乾燥した試料 X に金属 Na を加えても、顕著な気泡（H₂）は発生しなかった。',
+      question: 'この金属 Na の実験結果から確認できることは？',
+      correct: pos
+        ? '-OH 基（フェノール性/アルコール性）または -COOH 基を持つ'
+        : '遊離の -OH 基や -COOH 基を持たない（エステル・アミド・アミン・ニトロ等）',
+      wrong: pos
+        ? [
+            '-OH 基も -COOH 基も持たない中性エステルである',
+            'ニトロ基 (-NO₂) のみを持つ化合物である',
+            'エーテル結合 (-O-) のみを持つ化合物である',
+          ]
+        : [
+            'カルボキシ基 (-COOH) を持つカルボン酸である',
+            '遊離のフェノール性 -OH を持つフェノール類である',
+            'アルコール性 -OH を持つ芳香族アルコールである',
+          ],
+      note: pos ? '金属Na陽性（-OH / -COOH あり）' : '金属Na陰性（遊離 -OH / -COOH なし）',
+      feedback: pos
+        ? 'その通り！金属Naと反応してH₂を発生する＝遊離の -OH または -COOH を持つ裏付けだ！'
+        : '正解！金属Naと反応しないことから、遊離の -OH や -COOH を持たないことが確認できたぞ！',
+    };
+  }
+
+  // 2) 銀鏡反応が未出題なら還元性(-CHO/ギ酸エステル)の確認
+  if (!usedNames.includes('銀鏡')) {
+    const pos = !!(t.silver_mirror && t.silver_mirror.positive);
+    return {
+      reagent: '追加実験：銀鏡反応 (アンモニア性硝酸銀)',
+      effect: pos ? 'silver' : 'none',
+      observation: pos
+        ? 'アンモニア性硝酸銀水溶液を加えて温めると銀鏡が析出した。'
+        : 'アンモニア性硝酸銀水溶液を加えて温めたが、銀鏡は全く生じなかった。',
+      question: 'この銀鏡反応の結果から確定できることは？',
+      correct: pos
+        ? '還元性のある -CHO 基またはギ酸エステル構造を持つ'
+        : 'ホルミル基 (-CHO) やギ酸エステル構造 (HCOO-) は持たない',
+      wrong: pos
+        ? [
+            'ケトン基 (-CO-) のみを持つ',
+            'ニトロ基 (-NO₂) を持つ',
+            'カルボン酸（酢酸・安息香酸）である',
+          ]
+        : [
+            'アルデヒド基 (-CHO) を持つサリチルアルデヒドである',
+            'ギ酸エステル (HCOO-R) である',
+            '還元性を持つギ酸である',
+          ],
+      note: pos ? '銀鏡反応陽性（-CHO 構造あり）' : '銀鏡反応陰性（-CHO / ギ酸エステル除外）',
+      feedback: '的確な除外だ！銀鏡反応の陰性によってアルデヒド類・ギ酸エステル類を完全に除外できるぞ！',
+    };
+  }
+
+  // 3) フォールバック：ヨードホルム反応の確認
+  const pos = !!(t.iodoform && t.iodoform.positive);
+  return {
+    reagent: '追加実験：ヨードホルム反応 (I₂ + NaOH 加熱)',
+    effect: pos ? 'yellow_ppt' : 'none',
+    observation: pos
+      ? 'I₂ と NaOH 水溶液を加えて温めると黄色沈殿（CHI₃）が生じた。'
+      : 'I₂ と NaOH 水溶液を加えて温めたが、黄色沈殿は生じなかった。',
+    question: 'このヨードホルム反応の結果からわかることは？',
+    correct: pos
+      ? 'CH₃CO- または CH₃CH(OH)- 構造を持つ'
+      : 'CH₃CO-R（ケトン/アセトアルデヒド）や CH₃CH(OH)-R 構造は持たない',
+    wrong: pos
+      ? ['ベンゼン環に -COOH が直結している', 'ニトロ基を持つ', 'エーテル結合のみを持つ']
+      : ['アセトフェノン骨格 (CH₃CO-Ar) を持つ', 'エタノール構造を持つ', '2-プロパノール構造を持つ'],
+    note: pos ? 'ヨードホルム反応陽性' : `ヨードホルム反応陰性（${window.ChemLab.formatFormulaText(f)}）`,
+    feedback: 'よし！これでアセチルケトン型などの異性体もしっかり除外できたぞ！',
+  };
+}
+
+/**
+ * 最終確認＆ひっかけ除外ステップを生成（標準編の第3ステップ・難関編の第4ステップ）
+ */
+function buildConfirmStep(compound) {
+  const f = compound.formula;
+  const t = compound.tests;
+
+  // エステル・アミド（加水分解あり）の確認ステップ
+  if (t.hydrolysis && t.hydrolysis.positive && compound.hydrolysisProducts) {
+    const hp = compound.hydrolysisProducts;
+    const compA = window.ChemLab.COMPOUNDS[hp.A];
+    const compB = window.ChemLab.COMPOUNDS[hp.B];
+    return {
+      reagent: '最終確認：加水分解の結合パートナー照合',
+      effect: 'hydrolysis',
+      observation: 'ここまでの分析で加水分解により生成物 A と B に分かれることがわかっている。元の分子式と A・B の組み合わせを最終確認しよう。',
+      question: '加水分解で生じる「酸成分 A」と「アルコール/フェノール/アミン成分 B」の正しい組み合わせは？',
+      correct: `A = ${compA.name} ／ B = ${compB.name}`,
+      wrong: [
+        'A = ギ酸 ／ B = 2-メチル-2-プロパノール',
+        'A = 安息香酸 ／ B = エタノール',
+        'A = 酢酸 ／ B = 1-ブタノール',
+        'A = プロピオン酸 ／ B = 2-プロパノール',
+      ]
+        .filter((w) => w !== `A = ${compA.name} ／ B = ${compB.name}`)
+        .slice(0, 3),
+      note: `最終確認：加水分解で ${compA.name} ＋ ${compB.name}`,
+      feedback: `完璧！加水分解の生成物 A（${compA.name}）と B（${compB.name}）をつなぎ直せば元の構造が一意に決まるぞ！`,
+    };
+  }
+
+  // 臭素水で特徴的な反応を示す化合物（C=C脱色 / フェノール・アニリン白色沈殿）
+  if (t.bromine && t.bromine.positive) {
+    const isDecolor = t.bromine.effect === 'decolor';
+    return {
+      reagent: '最終確認：臭素水 (Br₂) の反応チェック',
+      effect: t.bromine.effect,
+      observation: t.bromine.result,
+      question: 'この臭素水の結果から最終確認できることは？',
+      correct: isDecolor
+        ? 'C=C 二重結合への臭素の付加反応が起こっている'
+        : 'ベンゼン環に -OH または -NH₂ が直結し、臭素の置換反応で白色沈殿が生じる',
+      wrong: isDecolor
+        ? [
+            'ベンゼン環への置換反応で白色沈殿が生じている',
+            '飽和化合物であり不飽和結合は存在しない',
+            '銀鏡反応による銀の析出が起こっている',
+          ]
+        : [
+            'C=C 二重結合への付加反応による脱色である',
+            'アルコール性 -OH による反応である',
+            'ニトロ基による酸化反応である',
+          ],
+      note: isDecolor ? '臭素水脱色（C=C 付加反応を確認）' : '臭素水で白色沈殿（芳香族置換を確認）',
+      feedback: '抜かりなし！これで候補の絞り込みは完璧だ！',
+    };
+  }
+
+  // その他の化合物：酸塩基・官能基クロスチェック
+  return {
+    reagent: '最終確認：酸塩基・官能基のクロスチェック',
+    effect: t.sodium.positive ? 'bubbles' : 'none',
+    observation: `最終チェックとして金属 Na を加えたところ「${t.sodium.positive ? '気泡（H₂）が発生した' : '気泡は発生しなかった'}」。また、液性テストでは「${
+      t.solubility.positive
+        ? '塩基（NaOH / NaHCO₃）と反応する酸性物質'
+        : t.hcl_bleach && t.hcl_bleach.positive
+        ? '希塩酸に溶ける塩基性物質'
+        : '酸にも塩基にも反応しない中性物質'
+    }」であった。`,
+    question: 'この最終クロスチェックと矛盾しない分類は？',
+    correct: `${compound.category}（${window.ChemLab.formatFormulaText(f)}）`,
+    wrong: ['芳香族ニトロ化合物', '第3級アルコール', '環状ジエステル', '芳香族第1級アミン']
+      .filter((w) => !compound.category.includes(w) && w !== compound.category)
+      .slice(0, 3),
+    note: `最終確認：${compound.category} として矛盾なし`,
+    feedback: '素晴らしい論理の組み立てだ！すべての手がかりが揃ったので Phase 3 で最終構造を決定しよう！',
+  };
+}
+
+/**
+ * 難易度に応じた定性分析ステップ一覧を返す（基礎:2回 / 標準:3回 / 難関:4回）
  */
 function getClueSteps(compound) {
-  const rawSteps = CUSTOM_CLUES[compound.id];
-  if (!rawSteps) return [];
+  const coreSteps = CUSTOM_CLUES[compound.id];
+  if (!coreSteps) return [];
+
+  let rawSteps;
+  if (compound.difficulty === 'basic') {
+    rawSteps = [...coreSteps]; // 2回
+  } else if (compound.difficulty === 'standard') {
+    rawSteps = [...coreSteps, buildConfirmStep(compound)]; // 3回
+  } else {
+    rawSteps = [...coreSteps, buildExtraAdvancedStep(compound), buildConfirmStep(compound)]; // 4回
+  }
 
   return rawSteps.map((s, idx) => {
     const options = [
       { label: s.correct, correct: true },
       ...s.wrong.map((w) => ({ label: w, correct: false })),
     ];
-    // Fisher-Yates shuffle
     for (let i = options.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [options[i], options[j]] = [options[j], options[i]];
@@ -4981,6 +5183,7 @@ function getClueSteps(compound) {
 
 window.ChemLab = window.ChemLab || {};
 window.ChemLab.getClueSteps = getClueSteps;
+window.ChemLab.getIhdHint = getIhdHint;
 })();
 
 
@@ -6386,7 +6589,7 @@ const {
   COMPOUNDS, EXPERIMENTS, PARTS_CATALOG, PARTS_MAP, REACTION_REFERENCE,
   calcIHD, calcMW, calcPartsFormula, checkAssembledParts,
   formatFormulaHTML, formatFormulaText, generateElementalAnalysis, getPlayableIds,
-  getClueSteps, renderStructureSVG, LabStageRenderer, sound,
+  getClueSteps, getIhdHint, renderStructureSVG, LabStageRenderer, sound,
 } = window.ChemLab;
 
 const STORAGE_KEY = 'organic_chem_lab_discovered_v1';
@@ -6462,6 +6665,7 @@ const state = {
   eaHintStep: 0,
   lives: 3,
   mistakes: 0,
+  ihdChecked: false,
   // Phase 2: Professor's Clue Steps
   clueSteps: [],
   clueIdx: 0,
@@ -6682,6 +6886,7 @@ function startNewProblem(forcedId = null, isTutorialPractice = false) {
   state.ea = generateElementalAnalysis(compound);
   state.eaHintStep = 0;
   state.mistakes = 0;
+  state.ihdChecked = false;
   state.clueSteps = getClueSteps(compound);
   state.clueIdx = 0;
   state.clueSolved = false;
@@ -6774,21 +6979,26 @@ function handlePhase1Submit(e) {
   const hVal = Number.parseInt(els.inH.value, 10);
   const oVal = Number.parseInt(els.inO.value, 10);
   const nVal = Number.parseInt(els.inN.value || '0', 10);
-  const ihdVal = Number.parseInt(els.inIHD.value, 10);
+  const ihdRaw = els.inIHD.value.trim();
+  const hasIhdInput = ihdRaw !== '';
+  const ihdVal = hasIhdInput ? Number.parseInt(ihdRaw, 10) : null;
 
-  if ([cVal, hVal, oVal, nVal, ihdVal].some((n) => Number.isNaN(n))) {
+  if ([cVal, hVal, oVal, nVal].some((n) => Number.isNaN(n)) || (hasIhdInput && Number.isNaN(ihdVal))) {
     sound.wrong();
-    setDialogue('👨‍🔬 教授', 'C, H, O, N の数と不飽和度（IHD）をすべて整数で入力してくれ！', 'surprised');
+    setDialogue('👨‍🔬 教授', 'C, H, O, N の数を整数で入力してくれ！（不飽和度は空欄でも提出できるぞ）', 'surprised');
     return;
   }
 
   const f = state.compound.formula;
   const trueN = f.N || 0;
   const trueIHD = calcIHD(f);
+  const formulaOK = cVal === f.C && hVal === f.H && oVal === f.O && nVal === trueN;
+  const ihdOK = !hasIhdInput || ihdVal === trueIHD;
 
-  if (cVal === f.C && hVal === f.H && oVal === f.O && nVal === trueN && ihdVal === trueIHD) {
+  if (formulaOK && ihdOK) {
     sound.positive();
     stage.triggerEffect('sparkle');
+    if (hasIhdInput) state.ihdChecked = true;
     enterPhase2(false);
   } else {
     sound.wrong();
@@ -6802,11 +7012,10 @@ function handlePhase1Submit(e) {
       return;
     }
 
-    const formulaOK = cVal === f.C && hVal === f.H && oVal === f.O && nVal === trueN;
-    if (formulaOK && ihdVal !== trueIHD) {
+    if (formulaOK && !ihdOK) {
       setDialogue(
         '👨‍🔬 教授',
-        `おしい！分子式は完璧だが、不飽和度（IHD）が違うぞ。\nIHD = (2×C + 2 + N − H) ÷ 2 で再計算してみよう！`,
+        `おしい！分子式は完璧だが、入力してくれた不飽和度（IHD）が違うぞ。\nIHD = (2×C + 2 + N − H) ÷ 2 で再計算するか、空欄のまま提出しても進めるぞ！`,
         'surprised'
       );
     } else {
@@ -6937,13 +7146,30 @@ function playEffectWithSound(effect) {
   else if (effect && effect !== 'none' && effect !== 'heat_none') sound.select();
 }
 
-function enterPhase2(skippedEA) {
+function updateFormulaBadge() {
+  if (!state.compound || !els.knownFormulaBadge) return;
   const f = state.compound.formula;
   const mw = calcMW(f);
   const ihd = calcIHD(f);
   els.knownFormulaBadge.hidden = false;
-  els.knownFormulaBadge.innerHTML = `${formatFormulaHTML(f)} (M=${mw}, IHD=${ihd})`;
+  els.knownFormulaBadge.innerHTML = state.ihdChecked
+    ? `${formatFormulaHTML(f)} (M=${mw}, IHD=${ihd})`
+    : `${formatFormulaHTML(f)} (M=${mw})`;
+}
 
+function checkOptionalIHD() {
+  if (!state.compound) return;
+  const info = getIhdHint(state.compound);
+  sound.positive();
+  stage.triggerEffect('sparkle');
+  state.ihdChecked = true;
+  updateFormulaBadge();
+  renderNotebook();
+  setDialogue('📐 不飽和度チェック（任意）', info.dialogue, 'happy');
+}
+
+function enterPhase2(skippedEA) {
+  updateFormulaBadge();
   showPhase('phase2');
   renderClueStep(skippedEA);
 }
@@ -7102,7 +7328,11 @@ function advanceClueOrPhase3() {
 }
 
 function renderNotebook() {
-  const total = state.deducedNotes.length;
+  const ihdLine =
+    state.ihdChecked && state.compound
+      ? `<div class="note-entry pos"><strong>📐 不飽和度（任意）</strong>${getIhdHint(state.compound).note}</div>`
+      : '';
+  const total = state.deducedNotes.length + (ihdLine ? 1 : 0);
   if (els.notebookCount) els.notebookCount.textContent = `${total}件`;
   if (els.dockNoteCnt) els.dockNoteCnt.textContent = String(total);
 
@@ -7112,12 +7342,14 @@ function renderNotebook() {
     return;
   }
 
-  els.notebookContent.innerHTML = state.deducedNotes
-    .map(
-      (item, i) =>
-        `<div class="note-entry pos"><strong>✓ ヒント${i + 1}【${item.reagent}】</strong>${item.note}</div>`
-    )
-    .join('');
+  els.notebookContent.innerHTML =
+    ihdLine +
+    state.deducedNotes
+      .map(
+        (item, i) =>
+          `<div class="note-entry pos"><strong>✓ ヒント${i + 1}【${item.reagent}】</strong>${item.note}</div>`
+      )
+      .join('');
 }
 
 function showLabHint() {
@@ -7614,6 +7846,7 @@ document.querySelectorAll('.calc-btn').forEach((btn) => {
   on(btn, 'click', () => handleCalcAction(btn.dataset.calc));
 });
 
+on($('btn-ihd-check'), 'click', checkOptionalIHD);
 on($('btn-lab-hint'), 'click', showLabHint);
 on($('btn-replay-effect'), 'click', () => {
   const step = state.clueSteps[state.clueIdx];
