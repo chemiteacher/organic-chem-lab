@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#1e4237">
+  <title>教授の未知試料ラボ — 有機化学構造決定ゲーム</title>
+  <link rel="stylesheet" href="style.css?v=7">
+</head>
+<body>
+  <header class="app-header">
+    <div class="header-brand">
+      <span class="brand-icon" aria-hidden="true">🧪</span>
+      <div>
+        <h1 class="brand-title">教授の未知試料ラボ</h1>
+        <p class="brand-sub">有機化学 構造決定シミュレーター</p>
+      </div>
+    </div>
+
+    <div class="header-status" id="header-status" hidden>
+      <span class="status-pill" id="pill-difficulty">基礎編</span>
+      <span class="status-pill" id="pill-samples">試料: 10</span>
+      <span class="status-pill pill-life" id="pill-life">❤️❤️❤️</span>
+    </div>
+
+    <div class="header-actions">
+      <button type="button" class="btn-icon" id="btn-tutorial-header" title="遊び方・チュートリアル">
+        ❓ <span class="hide-sm">遊び方</span>
+      </button>
+      <button type="button" class="btn-icon" id="btn-encyclopedia" title="化合物図鑑・反応リファレンス">
+        📓 <span class="hide-sm">図鑑</span>
+      </button>
+      <button type="button" class="btn-icon" id="btn-mute" title="効果音 ON/OFF" aria-pressed="false">
+        🔊
+      </button>
+      <button type="button" class="btn-icon" id="btn-home" title="タイトルへ戻る (Esc)">
+        🏠 <span class="hide-sm">タイトル</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ==================== 専用タイトル画面（有機化学ラボ演出） ==================== -->
+  <section id="title-screen" class="title-screen" aria-label="タイトル画面">
+    <div class="title-hero">
+      <!-- 背景の浮遊分子・試薬SVG装飾 -->
+      <svg class="hero-bg-svg" viewBox="0 0 600 260" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+        <defs>
+          <radialGradient id="flaskGlow" cx="50%" cy="65%" r="50%">
+            <stop offset="0%" stop-color="#34d399" stop-opacity="0.32"/>
+            <stop offset="100%" stop-color="#1e4237" stop-opacity="0"/>
+          </radialGradient>
+        </defs>
+        <circle cx="300" cy="140" r="180" fill="url(#flaskGlow)"/>
+        <!-- 左上ベンゼン環 -->
+        <g class="float-mol mol-1" transform="translate(68, 52)" stroke="#7dd3b5" stroke-width="2" fill="none" opacity="0.34">
+          <polygon points="0,-26 22.5,-13 22.5,13 0,26 -22.5,13 -22.5,-13"/>
+          <circle cx="0" cy="0" r="14"/>
+          <line x1="22.5" y1="-13" x2="40" y2="-22"/>
+          <text x="43" y="-19" fill="#fde68a" stroke="none" font-size="12" font-weight="700">OH</text>
+        </g>
+        <!-- 右上エステル構造 -->
+        <g class="float-mol mol-2" transform="translate(495, 62)" stroke="#93c5fd" stroke-width="2" fill="none" opacity="0.32">
+          <line x1="-38" y1="0" x2="-12" y2="0"/>
+          <line x1="-10" y1="-4" x2="-10" y2="-24"/>
+          <line x1="-4" y1="-4" x2="-4" y2="-24"/>
+          <line x1="-2" y1="0" x2="26" y2="0"/>
+          <text x="-64" y="4" fill="#e2e8f0" stroke="none" font-size="11" font-weight="700">CH₃</text>
+          <text x="-12" y="-28" fill="#fca5a5" stroke="none" font-size="12" font-weight="700">O</text>
+          <text x="29" y="4" fill="#fca5a5" stroke="none" font-size="11" font-weight="700">OR</text>
+        </g>
+        <!-- 左下アニリン -->
+        <g class="float-mol mol-3" transform="translate(104, 198)" stroke="#93c5fd" stroke-width="1.8" fill="none" opacity="0.26">
+          <polygon points="0,-20 17.3,-10 17.3,10 0,20 -17.3,10 -17.3,-10"/>
+          <circle cx="0" cy="0" r="10"/>
+          <line x1="17.3" y1="-10" x2="32" y2="-16"/>
+          <text x="35" y="-12" fill="#93c5fd" stroke="none" font-size="11" font-weight="700">NH₂</text>
+        </g>
+        <!-- 右下カルボン酸 -->
+        <g class="float-mol mol-2" transform="translate(502, 200)" stroke="#fcd34d" stroke-width="1.8" fill="none" opacity="0.28">
+          <polygon points="0,-20 17.3,-10 17.3,10 0,20 -17.3,10 -17.3,-10"/>
+          <circle cx="0" cy="0" r="10"/>
+          <line x1="-17.3" y1="-10" x2="-34" y2="-16"/>
+          <text x="-74" y="-12" fill="#fde68a" stroke="none" font-size="11" font-weight="700">HOOC</text>
+        </g>
+      </svg>
+
+      <div class="hero-content">
+        <!-- 泡立つ三角フラスコSVGエンブレム -->
+        <div class="hero-flask-wrap" aria-hidden="true">
+          <svg class="hero-flask" viewBox="0 0 96 96">
+            <path d="M36 12 H60 V22 L56 36 L78 76 C80 80 77 86 72 86 H24 C19 86 16 80 18 76 L40 36 L36 22 Z" fill="rgba(255,255,255,0.12)" stroke="#e2f5ee" stroke-width="3.2" stroke-linejoin="round"/>
+            <path d="M25 65 L35 48 H61 L71 65 L75 75 C76 78 74 82 70 82 H26 C22 82 20 78 21 75 Z" fill="#10b981" opacity="0.88"/>
+            <path d="M27 65 Q48 59 69 65" fill="none" stroke="#a7f3d0" stroke-width="2.5"/>
+            <rect x="33" y="8" width="30" height="6" rx="3" fill="#fde68a"/>
+            <circle class="flask-bubble b1" cx="42" cy="70" r="3.5" fill="#d1fae5"/>
+            <circle class="flask-bubble b2" cx="54" cy="66" r="2.8" fill="#fef08a"/>
+            <circle class="flask-bubble b3" cx="48" cy="56" r="2.2" fill="#ffffff"/>
+          </svg>
+        </div>
+
+        <p class="hero-kicker">ORGANIC CHEMISTRY DEDUCTION LAB</p>
+        <h2 class="hero-title">教授の未知試料ラボ</h2>
+        <p class="hero-subtitle">元素分析 × 定性実験 × 構造決定で<br class="show-sm">全38種の有機化合物を解き明かせ！</p>
+
+        <div class="hero-progress-row">
+          <span class="hero-stat-pill" id="title-progress">🧬 図鑑 0/38 ｜ 🔥 連続 0</span>
+        </div>
+
+        <div class="hero-cta-row">
+          <button type="button" class="btn-hero-start" id="btn-start">
+            🧪 実験をはじめる！
+          </button>
+          <button type="button" class="btn-hero-tutorial" id="btn-open-tutorial">
+            📖 1分でわかるチュートリアル
+            <span class="new-badge" id="tutorial-badge">おすすめ</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 出題範囲・ルール設定カード -->
+    <div class="title-settings-card">
+      <h3 class="settings-card-title">⚙️ 研究テーマ・ルール設定</h3>
+
+      <div class="setting-group">
+        <label class="setting-label">難易度（出題範囲）</label>
+        <div class="option-grid" id="opt-difficulty" role="radiogroup" aria-label="難易度">
+          <button type="button" class="opt-btn selected" data-value="basic">
+            <strong>基礎編</strong>
+            <span>脂肪族の基本 (C2〜C4)</span>
+          </button>
+          <button type="button" class="opt-btn" data-value="standard">
+            <strong>標準編</strong>
+            <span>C₅H₁₀O₂全網羅・不飽和・異性体</span>
+          </button>
+          <button type="button" class="opt-btn" data-value="advanced">
+            <strong>難関編</strong>
+            <span>芳香族・サリチル酸・アミン/アミド</span>
+          </button>
+          <button type="button" class="opt-btn" data-value="all">
+            <strong>総合演習</strong>
+            <span>全38化合物からランダム</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="setting-group">
+        <label class="setting-label">元素分析パート</label>
+        <div class="option-row" id="opt-ea" role="radiogroup" aria-label="元素分析パート">
+          <button type="button" class="opt-btn selected" data-value="on">
+            <strong>あり（本格モード）</strong>
+            <span>燃焼データから分子式を計算</span>
+          </button>
+          <button type="button" class="opt-btn" data-value="skip">
+            <strong>スキップ（サクッと）</strong>
+            <span>分子式を提示して実験から開始</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="setting-group">
+        <label class="setting-label">試料残量・ルール</label>
+        <div class="option-row three-col" id="opt-mode" role="radiogroup" aria-label="試料残量ルール">
+          <button type="button" class="opt-btn selected" data-value="normal">
+            <strong>通常</strong>
+            <span>試料10回 / ライフ3</span>
+          </button>
+          <button type="button" class="opt-btn" data-value="challenge">
+            <strong>研究費節約</strong>
+            <span>試料5回 / 最少手数狙い</span>
+          </button>
+          <button type="button" class="opt-btn" data-value="practice">
+            <strong>練習</strong>
+            <span>試料・ライフ無制限</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== ゲームプレイ画面（2ペイン / スマホ最適化） ==================== -->
+  <main id="game-main" class="lab-layout" hidden>
+    <!-- 左ペイン（スマホでは上部）：研究室ステージ & 教授の会話 -->
+    <section class="left-pane" aria-label="研究室ステージと教授の会話">
+      <div class="stage-frame">
+        <div class="stage-topbar">
+          <span class="stage-label" id="stage-phase-badge">PHASE 1</span>
+          <span class="stage-sample-tag" id="stage-sample-tag">未知試料 X</span>
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="lab-canvas" width="256" height="128" aria-label="研究室ドット絵ステージ"></canvas>
+        </div>
+      </div>
+
+      <div class="dialogue-box" role="status" aria-live="polite">
+        <div class="dialogue-header">
+          <span class="speaker-tag" id="speaker-tag">👨‍🔬 教授</span>
+          <span class="formula-badge" id="known-formula-badge" hidden></span>
+        </div>
+        <p class="dialogue-text" id="dialogue-text">
+          ようこそ有機化学研究室へ！未知の有機化合物を解き明かそう。
+        </p>
+      </div>
+
+      <div class="kbd-hint hide-sm" aria-label="キーボード操作ガイド">
+        <span><kbd>↑↓←→</kbd> 選択</span>
+        <span><kbd>Enter</kbd> 決定</span>
+        <span><kbd>Backspace</kbd> 戻る</span>
+        <span><kbd>Esc</kbd> タイトル</span>
+      </div>
+    </section>
+
+    <!-- 右ペイン（スマホでは下部）：操作コンソール & 実験ノート -->
+    <section class="right-pane" aria-label="操作コンソールと実験ノート">
+      <!-- Phase 1: 元素分析 & 分子量決定 -->
+      <div id="panel-phase1" class="console-panel" hidden>
+        <div class="panel-head-row">
+          <h2 class="panel-heading">⚖️ Phase 1：元素分析 ＆ 分子量</h2>
+          <button type="button" class="btn-subtle" id="btn-ea-hint">💡 ヒント</button>
+        </div>
+
+        <div class="ea-data-card">
+          <p class="ea-lead" id="ea-lead">未知試料 X を完全燃焼させた実験データ：</p>
+          <div class="ea-metrics">
+            <div class="ea-metric">
+              <span class="ea-k">試料の質量 W</span>
+              <strong class="ea-v" id="ea-sample">-- mg</strong>
+            </div>
+            <div class="ea-metric">
+              <span class="ea-k">CaCl₂管増加 (H₂O)</span>
+              <strong class="ea-v" id="ea-h2o">-- mg</strong>
+            </div>
+            <div class="ea-metric">
+              <span class="ea-k">ソーダ石灰管 (CO₂)</span>
+              <strong class="ea-v" id="ea-co2">-- mg</strong>
+            </div>
+            <div class="ea-metric" id="ea-n-box" hidden>
+              <span class="ea-k">窒素分析 (N の質量)</span>
+              <strong class="ea-v" id="ea-n">-- mg</strong>
+            </div>
+            <div class="ea-metric highlight">
+              <span class="ea-k">分子量 M</span>
+              <strong class="ea-v" id="ea-mw">--</strong>
+            </div>
+          </div>
+          <p class="ea-note">原子量：H=1.0, C=12.0, N=14.0, O=16.0（CO₂=44, H₂O=18）</p>
+        </div>
+
+        <!-- 分子式・不飽和度入力 -->
+        <form id="form-phase1" class="ea-form" novalidate>
+          <div class="formula-inputs five-col">
+            <label class="num-field">
+              <span>C の数</span>
+              <input type="number" inputmode="numeric" id="in-c" min="1" max="20" step="1" required placeholder="4">
+            </label>
+            <label class="num-field">
+              <span>H の数</span>
+              <input type="number" inputmode="numeric" id="in-h" min="1" max="40" step="1" required placeholder="8">
+            </label>
+            <label class="num-field">
+              <span>O の数</span>
+              <input type="number" inputmode="numeric" id="in-o" min="0" max="10" step="1" required placeholder="0可">
+            </label>
+            <label class="num-field n-field">
+              <span>N の数</span>
+              <input type="number" inputmode="numeric" id="in-n" min="0" max="5" step="1" value="0" required placeholder="0">
+            </label>
+            <label class="num-field ihd-field">
+              <span>不飽和度</span>
+              <input type="number" inputmode="numeric" id="in-ihd" min="0" max="15" step="1" required placeholder="IHD">
+            </label>
+          </div>
+          <button type="submit" class="btn-primary btn-lg">✅ 分子式と不飽和度を提出</button>
+        </form>
+
+        <!-- 簡易化学電卓 -->
+        <details class="chem-calc" open>
+          <summary>🧮 簡易化学電卓（モル計算補助付き）</summary>
+          <div class="calc-body">
+            <p class="calc-guide">手順: ①CO₂×12/44=C ②H₂O×2/18=H ③W−C−H−N=O ④原子量で割る</p>
+            <div class="calc-display-row">
+              <input type="text" id="calc-display" class="calc-display" value="0" aria-label="電卓表示" readonly>
+              <button type="button" class="calc-btn calc-clear" data-calc="clear">C</button>
+              <button type="button" class="calc-btn" data-calc="back">⌫</button>
+            </div>
+            <div class="calc-chem-row">
+              <button type="button" class="calc-btn chem-fn" data-calc="fill_w">試料W</button>
+              <button type="button" class="calc-btn chem-fn" data-calc="fill_co2">CO₂値</button>
+              <button type="button" class="calc-btn chem-fn" data-calc="fill_h2o">H₂O値</button>
+              <button type="button" class="calc-btn chem-fn" data-calc="fill_n">N値</button>
+              <button type="button" class="calc-btn chem-fn" data-calc="mul_c">×12/44</button>
+              <button type="button" class="calc-btn chem-fn" data-calc="mul_h">×2/18</button>
+              <button type="button" class="calc-btn chem-fn" data-calc="div_12">÷12</button>
+              <button type="button" class="calc-btn chem-fn" data-calc="div_14">÷14</button>
+              <button type="button" class="calc-btn chem-fn" data-calc="div_16">÷16</button>
+            </div>
+            <div class="calc-pad">
+              <button type="button" class="calc-btn" data-calc="7">7</button>
+              <button type="button" class="calc-btn" data-calc="8">8</button>
+              <button type="button" class="calc-btn" data-calc="9">9</button>
+              <button type="button" class="calc-btn op" data-calc="/">÷</button>
+              <button type="button" class="calc-btn" data-calc="4">4</button>
+              <button type="button" class="calc-btn" data-calc="5">5</button>
+              <button type="button" class="calc-btn" data-calc="6">6</button>
+              <button type="button" class="calc-btn op" data-calc="*">×</button>
+              <button type="button" class="calc-btn" data-calc="1">1</button>
+              <button type="button" class="calc-btn" data-calc="2">2</button>
+              <button type="button" class="calc-btn" data-calc="3">3</button>
+              <button type="button" class="calc-btn op" data-calc="-">−</button>
+              <button type="button" class="calc-btn" data-calc="0">0</button>
+              <button type="button" class="calc-btn" data-calc=".">.</button>
+              <button type="button" class="calc-btn eq" data-calc="=">=</button>
+              <button type="button" class="calc-btn op" data-calc="+">+</button>
+            </div>
+          </div>
+        </details>
+      </div>
+
+      <!-- Phase 2: 教授の実験レポートから構造を推理 -->
+      <div id="panel-phase2" class="console-panel" hidden>
+        <div class="panel-head-row">
+          <h2 class="panel-heading">🔬 Phase 2：実験結果から構造を推理</h2>
+          <div class="head-btn-group">
+            <span class="clue-progress-pill" id="clue-progress">レポート 1 / 2</span>
+            <button type="button" class="btn-subtle" id="btn-lab-hint">💡 ヒント</button>
+          </div>
+        </div>
+
+        <div class="clue-report-card">
+          <div class="clue-meta">
+            <span class="clue-reagent-tag" id="clue-reagent">🧪 実験レポート</span>
+            <button type="button" class="btn-replay" id="btn-replay-effect" title="実験アニメーションをもう一度見る">🔁 再現</button>
+          </div>
+          <p class="clue-obs-text" id="clue-observation">
+            教授の実験レポートを読み込み中...
+          </p>
+        </div>
+
+        <p class="clue-question" id="clue-question">この実験結果から、試料 X に含まれる構造は？</p>
+        <div class="clue-choices" id="clue-choices" role="group" aria-label="構造の選択肢"></div>
+
+        <button type="button" class="btn-primary btn-lg" id="btn-clue-next" hidden>
+          ➡️ 次の実験レポートへ
+        </button>
+      </div>
+
+      <!-- Phase 3: 構造決定（カード選択 / パーツ組立） -->
+      <div id="panel-phase3" class="console-panel" hidden>
+        <div class="panel-head-row">
+          <h2 class="panel-heading">🧩 Phase 3：最終構造決定</h2>
+          <div class="head-btn-group">
+            <button type="button" class="btn-subtle" id="btn-toggle-names" aria-pressed="false">🙈 名前隠し</button>
+            <button type="button" class="btn-subtle" id="btn-back-phase2">← 推理確認</button>
+          </div>
+        </div>
+
+        <div class="p3-mode-tabs" role="tablist" aria-label="回答方式">
+          <button type="button" class="p3-mode-tab active" data-p3mode="cards" role="tab" aria-selected="true">
+            🃏 カード選択
+          </button>
+          <button type="button" class="p3-mode-tab" data-p3mode="builder" role="tab" aria-selected="false">
+            🧩 パーツ組立
+          </button>
+        </div>
+
+        <!-- カード選択ビュー -->
+        <div id="p3-cards-view">
+          <p class="phase3-tip">実験ノートと照らし合わせ、<strong>◯(候補) / ×(除外)</strong> で絞り込んで選ぼう！</p>
+          <div class="card-grid" id="candidate-grid"></div>
+        </div>
+
+        <!-- パーツ組立ビルダービュー -->
+        <div id="p3-builder-view" hidden>
+          <p class="phase3-tip">パーツを左から順につないで構造式を組み立てよう！（エステル: <code>酸−COO−アルコール</code>、アミド: <code>C₆H₅−NHCO−CH₃</code>）</p>
+          <div class="builder-workbench">
+            <div class="builder-status-row">
+              <span class="builder-formula" id="builder-formula">現在の構造: （未組立）</span>
+              <div class="builder-controls">
+                <button type="button" class="btn-subtle btn-sm" id="btn-part-undo">⌫ 1つ戻す</button>
+                <button type="button" class="btn-subtle btn-sm" id="btn-part-clear">🗑️ 全消去</button>
+              </div>
+            </div>
+            <div class="builder-chain" id="builder-chain">
+              <span class="builder-placeholder">下のパーツをタップして組み立てよう</span>
+            </div>
+          </div>
+
+          <div class="palette-section">
+            <div class="palette-title">🧱 骨格・炭化水素パーツ</div>
+            <div class="palette-grid" id="palette-skeleton"></div>
+          </div>
+          <div class="palette-section">
+            <div class="palette-title">⚗️ 官能基パーツ</div>
+            <div class="palette-grid" id="palette-func"></div>
+          </div>
+        </div>
+
+        <button type="button" class="btn-primary btn-lg" id="btn-submit-answer" disabled>
+          📣 学会発表（この構造で提出）
+        </button>
+      </div>
+
+      <!-- Phase 4: 教授の講評 & 評価 -->
+      <div id="panel-phase4" class="console-panel" hidden>
+        <div class="result-banner" id="result-banner">
+          <div class="rank-badge" id="result-rank">S</div>
+          <div>
+            <h2 class="result-title" id="result-title">論文採択・学会賞！</h2>
+            <p class="result-stats" id="result-stats">実験回数: 2回 / ミス: 0回</p>
+          </div>
+        </div>
+
+        <div class="answer-reveal">
+          <div class="answer-svg-box" id="answer-svg"></div>
+          <div class="answer-meta">
+            <span class="answer-cat" id="answer-category">エステル</span>
+            <h3 class="answer-name" id="answer-name">酢酸エチル</h3>
+            <p class="answer-sub" id="answer-formula">C₄H₈O₂ / M = 88 / 不飽和度 = 1</p>
+            <p class="answer-iupac" id="answer-iupac">IUPAC: エタン酸エチル</p>
+          </div>
+        </div>
+
+        <div class="explanation-box">
+          <h3>👨‍🔬 教授の論理的講評</h3>
+          <ol class="explanation-steps" id="explanation-steps"></ol>
+        </div>
+
+        <div class="result-actions">
+          <button type="button" class="btn-primary btn-lg" id="btn-next-problem">➡️ 次の未知試料へ</button>
+          <button type="button" class="btn-subtle" id="btn-result-home">🏠 タイトルへ</button>
+        </div>
+      </div>
+
+      <!-- いつでも参照・折りたたみ可能な推理ノート -->
+      <details class="notebook-panel" id="notebook-panel" open hidden>
+        <summary class="notebook-summary">
+          <span>🧪 推理ノート（判明した構造ヒント）</span>
+          <span class="notebook-count" id="notebook-count">0件</span>
+        </summary>
+        <div class="notebook-content" id="notebook-content">
+          <p class="notebook-empty">実験レポートを読み解くと、判明した構造ヒントがここに記録されます。</p>
+        </div>
+      </details>
+    </section>
+  </main>
+
+  <!-- スマホ片手操作用 ボトムクイックバー -->
+  <nav class="mobile-dock" id="mobile-dock" hidden aria-label="クイック操作バー">
+    <button type="button" class="dock-btn" id="dock-notebook">
+      <span class="dock-ico">🧪</span>
+      <span class="dock-lbl">ノート(<span id="dock-note-cnt">0</span>)</span>
+    </button>
+    <button type="button" class="dock-btn" id="dock-hint">
+      <span class="dock-ico">💡</span>
+      <span class="dock-lbl">ヒント</span>
+    </button>
+    <button type="button" class="dock-btn" id="dock-ref">
+      <span class="dock-ico">📋</span>
+      <span class="dock-lbl">反応表</span>
+    </button>
+    <button type="button" class="dock-btn dock-primary" id="dock-action">
+      <span class="dock-ico">🎯</span>
+      <span class="dock-lbl" id="dock-action-lbl">構造決定</span>
+    </button>
+  </nav>
+
+  <!-- チュートリアル モーダル（4ステップ＋実践練習） -->
+  <div class="modal-backdrop" id="tutorial-modal" hidden role="dialog" aria-modal="true" aria-labelledby="tut-title">
+    <div class="modal-dialog tut-dialog">
+      <div class="modal-header">
+        <h2 id="tut-title">📖 1分でわかるチュートリアル</h2>
+        <button type="button" class="btn-icon" id="btn-close-tutorial" aria-label="閉じる">✕</button>
+      </div>
+      <div class="tut-body" id="tut-body"></div>
+      <div class="tut-footer">
+        <div class="tut-dots" id="tut-dots"></div>
+        <div class="tut-nav-btns">
+          <button type="button" class="btn-subtle" id="btn-tut-prev">← 前へ</button>
+          <button type="button" class="btn-primary" id="btn-tut-next">次へ →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 化合物図鑑 & 反応リファレンス モーダル -->
+  <div class="modal-backdrop" id="encyclopedia-modal" hidden role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h2 id="modal-title">📓 化合物図鑑 ＆ 反応リファレンス</h2>
+        <button type="button" class="btn-icon" id="btn-close-modal" aria-label="閉じる">✕</button>
+      </div>
+      <div class="modal-tabs" role="tablist">
+        <button type="button" class="modal-tab active" data-mtab="compounds" role="tab" aria-selected="true">
+          🧬 発見済み (<span id="discovered-count">0/38</span>)
+        </button>
+        <button type="button" class="modal-tab" data-mtab="reference" role="tab" aria-selected="false">
+          📋 定性反応リファレンス
+        </button>
+      </div>
+      <div class="modal-body" id="modal-body"></div>
+    </div>
+  </div>
+
+  <script defer src="js/compounds.js?v=7"></script>
+  <script defer src="js/clues.js?v=7"></script>
+  <script defer src="js/svgRenderer.js?v=7"></script>
+  <script defer src="js/pixelArt.js?v=7"></script>
+  <script defer src="js/sound.js?v=7"></script>
+  <script defer src="js/game.js?v=7"></script>
+</body>
+</html>
