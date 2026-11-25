@@ -671,6 +671,61 @@ summary:focus-visible {
   box-shadow: inset 0 0 0 1px var(--accent);
 }
 
+.opt-btn-wide {
+  grid-column: 1 / -1;
+}
+
+.dex-rank-s {
+  display: inline-block;
+  background: #facc15;
+  color: #422006;
+  font-size: 0.68rem;
+  font-weight: 900;
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-left: 4px;
+}
+
+.dex-rank-crown {
+  display: inline-block;
+  background: linear-gradient(135deg, #f59e0b, #fbbf24);
+  color: #422006;
+  border: 1px solid #b45309;
+  font-size: 0.68rem;
+  font-weight: 900;
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-left: 4px;
+}
+
+.dex-card.unlocked {
+  cursor: pointer;
+  transition: border-color 0.14s, transform 0.1s, box-shadow 0.14s;
+}
+
+.dex-card.unlocked:hover {
+  border-color: var(--accent);
+  box-shadow: 0 3px 10px rgba(36, 106, 86, 0.14);
+  transform: translateY(-1px);
+}
+
+.dex-more {
+  margin-top: 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--accent);
+  text-align: right;
+}
+
+.dex-detail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
 /* ==================== Phase 1: Elemental Analysis ==================== */
 .ea-data-card {
   background: var(--bg-panel);
@@ -2123,6 +2178,10 @@ summary:focus-visible {
             <strong>総合演習（2〜4回）</strong>
             <span>全38化合物・難易度別に回数変化</span>
           </button>
+          <button type="button" class="opt-btn opt-btn-wide" data-value="weak" id="btn-diff-weak">
+            <strong>🔥 苦手克服モード（復習）</strong>
+            <span id="weak-mode-desc">過去にミスした化合物だけを集中復習</span>
+          </button>
         </div>
       </div>
 
@@ -2185,8 +2244,9 @@ summary:focus-visible {
       </div>
 
       <div class="kbd-hint hide-sm" aria-label="キーボード操作ガイド">
+        <span><kbd>1〜4</kbd> 4択</span>
         <span><kbd>↑↓←→</kbd> 選択</span>
-        <span><kbd>Enter</kbd> 決定</span>
+        <span><kbd>Enter</kbd> 決定/次へ</span>
         <span><kbd>Backspace</kbd> 戻る</span>
         <span><kbd>Esc</kbd> タイトル</span>
       </div>
@@ -2536,19 +2596,22 @@ function generateElementalAnalysis(compound) {
   const N = f.N || 0;
   const mw = calcMW(f);
 
-  const candidateMmols = [0.5, 1.0, 0.25, 0.2, 2.0];
-  let chosenMmol = 0.5;
+  const candidateMmols = [0.2, 0.25, 0.5, 1.0, 1.5, 2.0];
+  const validMmols = [];
+  const isClean = (v) => Math.abs(v * 10 - Math.round(v * 10)) < 1e-6;
   for (const n of candidateMmols) {
     const w = +(n * mw).toFixed(4);
     const co2 = +(n * C * 44).toFixed(4);
     const h2o = +(n * (H / 2) * 18).toFixed(4);
     const nMass = +(n * N * 14).toFixed(4);
-    const isClean = (v) => Math.abs(v * 10 - Math.round(v * 10)) < 1e-6;
     if (w >= 18 && w <= 220 && isClean(w) && isClean(co2) && isClean(h2o) && isClean(nMass)) {
-      chosenMmol = n;
-      break;
+      validMmols.push(n);
     }
   }
+  const chosenMmol =
+    validMmols.length > 0
+      ? validMmols[Math.floor(Math.random() * validMmols.length)]
+      : 0.5;
 
   return {
     mmol: chosenMmol,
@@ -2677,8 +2740,10 @@ const PARTS_CATALOG = [
   { id: 'CO', label: 'CO (ケトン)', group: 'func', formula: { C: 1, H: 0, O: 1, N: 0 } },
   { id: 'COOH', label: 'COOH', group: 'func', formula: { C: 1, H: 1, O: 2, N: 0 } },
   { id: 'COO', label: 'COO (エステル)', group: 'func', formula: { C: 1, H: 0, O: 2, N: 0 } },
+  { id: 'OCO', label: 'OCO (逆エステル)', group: 'func', formula: { C: 1, H: 0, O: 2, N: 0 } },
   { id: 'NH2', label: 'NH₂', group: 'func', formula: { C: 0, H: 2, O: 0, N: 1 } },
   { id: 'NHCO', label: 'NHCO (アミド)', group: 'func', formula: { C: 1, H: 1, O: 1, N: 1 } },
+  { id: 'CONH', label: 'CONH (逆アミド)', group: 'func', formula: { C: 1, H: 1, O: 1, N: 1 } },
   { id: 'NO2', label: 'NO₂', group: 'func', formula: { C: 0, H: 0, O: 2, N: 1 } },
 ];
 
@@ -2701,18 +2766,55 @@ function calcPartsFormula(partIds) {
 }
 
 /**
- * 組み立てたパーツ配列が対象化合物と一致するか（左右反転・置換基順の等価性込みで判定）
+ * 化学的に等価なパーツ結合を正規化（例: CO+OH→COOH, CO+O→COO, O+CO→OCO）
+ */
+function normalizePartIds(partIds) {
+  const out = [];
+  for (let i = 0; i < partIds.length; i++) {
+    const cur = partIds[i];
+    const next = partIds[i + 1];
+    if (cur === 'CO' && next === 'OH') {
+      out.push('COOH');
+      i++;
+    } else if (cur === 'OH' && next === 'CO') {
+      out.push('COOH');
+      i++;
+    } else if (cur === 'CO' && next === 'O') {
+      out.push('COO');
+      i++;
+    } else if (cur === 'O' && next === 'CO') {
+      out.push('OCO');
+      i++;
+    } else if (cur === 'CO' && next === 'H') {
+      out.push('CHO');
+      i++;
+    } else {
+      out.push(cur);
+    }
+  }
+  return out;
+}
+
+/**
+ * パーツ配列を左右反転する（方向性のある結合 COO↔OCO, NHCO↔CONH も正しく反転）
+ */
+function mirrorPartIds(partIds) {
+  const flip = { COO: 'OCO', OCO: 'COO', NHCO: 'CONH', CONH: 'NHCO' };
+  return [...partIds].reverse().map((p) => flip[p] || p);
+}
+
+/**
+ * 組み立てたパーツ配列が対象化合物と一致するか（正規化＋左右ミラー自動等価判定）
  */
 function checkAssembledParts(compound, partIds) {
   if (!compound.acceptedParts || !partIds.length) return false;
-  const key = partIds.join('|');
-  const revKey = [...partIds].reverse().join('|');
+  const norm = normalizePartIds(partIds);
+  const key = norm.join('|');
+  const mirrorKey = mirrorPartIds(norm).join('|');
   for (const recipe of compound.acceptedParts) {
-    const rKey = recipe.join('|');
-    if (key === rKey) return true;
-    // 左右反転の許容（COOやNHCOは方向性があるため、レシピ側に明示定義されたもののみ一致とする）
-    const hasDirected = recipe.includes('COO') || recipe.includes('NHCO');
-    if (!hasDirected && revKey === rKey) return true;
+    const rNorm = normalizePartIds(recipe);
+    const rKey = rNorm.join('|');
+    if (key === rKey || mirrorKey === rKey) return true;
   }
   return false;
 }
@@ -3342,7 +3444,10 @@ const COMPOUNDS = {
     formula: { C: 4, H: 10, O: 1, N: 0 },
     optimalTests: 2,
     candidates: ['butanol_2', 'isobutanol', 'tert_butanol', 'diethyl_ether'],
-    acceptedParts: [['CH3', 'CH(CH3)', 'CH2', 'OH']],
+    acceptedParts: [
+      ['CH3', 'CH(CH3)', 'CH2', 'OH'],
+      ['CH(CH3)', 'CH3', 'CH2', 'OH'],
+    ],
     tests: withDefaultN({
       solubility: { positive: false, result: '水にやや溶ける。NaHCO₃を加えても発泡しない。', effect: 'dissolve' },
       sodium: { positive: true, result: '気泡（H₂）を発生して反応した！-OH基を持つ。', effect: 'bubbles' },
@@ -3371,7 +3476,7 @@ const COMPOUNDS = {
     playable: true,
     formula: { C: 4, H: 4, O: 4, N: 0 },
     optimalTests: 3,
-    candidates: ['maleic_acid', 'fumaric_acid', 'methylenemalonic_acid', 'glycolide'],
+    candidates: ['maleic_acid', 'fumaric_acid', 'succinic_acid', 'malic_acid'],
     acceptedParts: [['COOH', 'cis-CH=CH', 'COOH']],
     tests: withDefaultN({
       solubility: { positive: true, result: '水によく溶け、NaHCO₃水溶液と激しく発泡（CO₂発生）！-COOH基を持つ。', effect: 'bubbles' },
@@ -3388,7 +3493,7 @@ const COMPOUNDS = {
     explanation: {
       ihd: '分子式 C₄H₄O₄ の不飽和度は 3。2つの -COOH（不飽和度2）と1つの C=C 二重結合（不飽和度1）が推測されます。',
       key: '臭素水の脱色＋NaHCO₃発泡＋シス-トランス異性体の存在からマレイン酸かフマル酸に絞られ、加熱で容易に分子内脱水（無水マレイン酸生成）することからシス型のマレイン酸と確定します！',
-      exclude: 'フマル酸（トランス型）は2つの-COOHが離れているため分子内脱水しません。メチレンマロン酸は幾何異性体なし、グリコリドはエステルです。',
+      exclude: 'フマル酸（トランス型）は分子内脱水せず、コハク酸・リンゴ酸は C=C 二重結合を持たないため臭素水を脱色しません。',
     },
   },
 
@@ -3401,7 +3506,7 @@ const COMPOUNDS = {
     playable: true,
     formula: { C: 4, H: 4, O: 4, N: 0 },
     optimalTests: 3,
-    candidates: ['maleic_acid', 'fumaric_acid', 'methylenemalonic_acid', 'glycolide'],
+    candidates: ['maleic_acid', 'fumaric_acid', 'succinic_acid', 'malic_acid'],
     acceptedParts: [['COOH', 'trans-CH=CH', 'COOH']],
     tests: withDefaultN({
       solubility: { positive: true, result: '水には溶けにくいが、NaOH・NaHCO₃水溶液には発泡（CO₂発生）して溶ける！-COOH基を持つ。', effect: 'bubbles' },
@@ -3820,7 +3925,7 @@ const COMPOUNDS = {
     },
     explanation: {
       ihd: '分子式 C₈H₉NO の不飽和度は (2×8 + 2 + 1 − 9) ÷ 2 = 5（ベンゼン環4 + アミドC=O 1）。',
-      key: '元の試料は中性で希塩酸不溶・ジアゾカップリング陰性ですが、加水分解すると生成物B（アニリン）が「さらし粉赤紫呈色・ジアゾカップリング陽性」、生成物A（酢酸）が「NaHCO₃発泡陽性」になります！',
+      key: '元の試料は中性で希塩酸不溶・ジアゾカップリング陰性ですが、酸または塩基と長時間加熱（還流）してアミド結合を加水分解し、中和して遊離させると、生成物B（アニリン）が「さらし粉赤紫呈色・ジアゾカップリング陽性」、生成物A（酢酸）が「NaHCO₃発泡陽性」になります！',
       exclude: 'アニリンは加水分解前から希塩酸可溶・さらし粉陽性、ベンズアミドは加水分解してもアニリンを生じません。',
     },
   },
@@ -4022,6 +4127,8 @@ const COMPOUNDS = {
   isobutyl_formate: { id: 'isobutyl_formate', name: 'ギ酸イソブチル', iupac: 'メタン酸2-メチルプロピル', category: 'エステル', difficulty: 'standard', playable: false, formula: { C: 5, H: 10, O: 2, N: 0 }, tests: {} },
   methyl_isobutyrate: { id: 'methyl_isobutyrate', name: 'イソ酪酸メチル', iupac: '2-メチルプロパン酸メチル', category: 'エステル', difficulty: 'standard', playable: false, formula: { C: 5, H: 10, O: 2, N: 0 }, tests: {} },
   pentanoic_acid: { id: 'pentanoic_acid', name: '吉草酸 (ペンタン酸)', iupac: 'ペンタン酸', category: 'カルボン酸', difficulty: 'standard', playable: false, formula: { C: 5, H: 10, O: 2, N: 0 }, tests: {} },
+  succinic_acid: { id: 'succinic_acid', name: 'コハク酸', iupac: 'ブタン二酸', category: '飽和ジカルボン酸', difficulty: 'standard', playable: false, formula: { C: 4, H: 6, O: 4, N: 0 }, tests: {} },
+  malic_acid: { id: 'malic_acid', name: 'リンゴ酸', iupac: 'ヒドロキシブタン二酸', category: 'ヒドロキシジカルボン酸', difficulty: 'standard', playable: false, formula: { C: 4, H: 6, O: 5, N: 0 }, tests: {} },
   methylenemalonic_acid: { id: 'methylenemalonic_acid', name: 'メチレンマロン酸', iupac: '2-メチレンプロパン二酸', category: '不飽和ジカルボン酸', difficulty: 'standard', playable: false, formula: { C: 4, H: 4, O: 4, N: 0 }, tests: {} },
   glycolide: { id: 'glycolide', name: 'グリコリド', iupac: '1,4-ジオキサン-2,5-ジオン', category: '環状ジエステル', difficulty: 'standard', playable: false, formula: { C: 4, H: 4, O: 4, N: 0 }, tests: {} },
   anisole: { id: 'anisole', name: 'アニソール', iupac: 'メトキシベンゼン', category: '芳香族エーテル', difficulty: 'advanced', playable: false, formula: { C: 7, H: 8, O: 1, N: 0 }, tests: {} },
@@ -4087,7 +4194,7 @@ const CUSTOM_CLUES = {
       effect: 'yellow_ppt',
       observation: '試料 X にヨウ素と水酸化ナトリウム水溶液を加えて温めると、特異臭のある黄色沈殿（CHI₃）が生じた。',
       question: 'この結果から、さらに絞り込める部分構造は？',
-      correct: 'CH₃CH(OH)- 構造（エタノール）',
+      correct: 'CH₃CH(OH)- 構造を持つ第1級アルコール',
       wrong: ['CH₃CH₂CH₂- 構造（1-プロパノール型）', '第3級アルコール構造 (R₃C-OH)', 'カルボキシ基 (-COOH)'],
       note: 'CH₃CH(OH)- 構造あり（ヨードホルム陽性）',
       feedback: 'お見事！第1級アルコールの中でヨードホルム反応が陽性になるのはエタノールだけだ！',
@@ -4295,7 +4402,7 @@ const CUSTOM_CLUES = {
       effect: 'yellow_ppt',
       observation: '試料 X を加水分解して酸 A とアルコール B に分離し、B でヨードホルム反応を行うと黄色沈殿（CHI₃）が生じた！',
       question: '生成物 B がヨードホルム陽性であることから確定するアルコール B は？',
-      correct: 'エタノール (CH₃CH₂OH) → 元のエステルは酢酸エチル',
+      correct: 'エタノール (CH₃CH₂OH)',
       wrong: ['メタノール (CH₃OH)', '1-プロパノール (CH₃CH₂CH₂OH)', '2-メチル-2-プロパノール'],
       note: '加水分解B = エタノール（ヨードホルム陽性）',
       feedback: '完璧！C₄H₈O₂ の非ギ酸エステルでBがヨードホルム陽性になるのはエタノール側だけ＝酢酸エチル確定だ！',
@@ -4331,7 +4438,7 @@ const CUSTOM_CLUES = {
       effect: 'none',
       observation: '試料 X（C₄H₈O₂）は NaHCO₃ で発泡せず、銀鏡反応も陰性であった。',
       question: 'この結果から、試料 X の候補として残る種類は？',
-      correct: 'ギ酸エステル以外のエステル（酢酸エチル or プロピオン酸メチル）',
+      correct: 'ギ酸エステル以外の飽和エステル (-COO-)',
       wrong: ['酪酸 (C₃H₇COOH)', 'ギ酸プロピル (HCOOC₃H₇)', 'ギ酸イソプロピル'],
       note: '非ギ酸エステル（酢酸エチル or プロピオン酸メチル）',
       feedback: '正解！NaHCO₃陰性でカルボン酸を除外、銀鏡陰性でギ酸エステルを除外できたぞ！',
@@ -4341,8 +4448,8 @@ const CUSTOM_CLUES = {
       effect: 'none',
       observation: '加水分解で得られたアルコール B でヨードホルム反応を行ったが、黄色沈殿は生じなかった。',
       question: '生成物 B がヨードホルム陰性であることから確定する構造は？',
-      correct: 'B = メタノール (CH₃OH) → プロピオン酸メチル',
-      wrong: ['B = エタノール (CH₃CH₂OH) → 酢酸エチル', 'B = 2-プロパノール', 'B = 2-ブタノール'],
+      correct: 'B = メタノール (CH₃OH)',
+      wrong: ['B = エタノール (CH₃CH₂OH)', 'B = 2-プロパノール', 'B = 2-ブタノール'],
       note: '加水分解B = メタノール（ヨードホルム陰性）',
       feedback: '完璧！Bがエタノールならヨードホルム陽性になるため、B=メタノール＝プロピオン酸メチルと確定するぞ！',
     },
@@ -4364,7 +4471,7 @@ const CUSTOM_CLUES = {
       effect: 'yellow_ppt',
       observation: '加水分解後のアルコール B はヨードホルム反応が陽性で、さらに K₂Cr₂O₇ で酸化すると還元性を示さないケトンになった！',
       question: 'ヨードホルム陽性かつ第2級アルコールである生成物 B は？',
-      correct: '2-プロパノール → 酢酸イソプロピル',
+      correct: '2-プロパノール',
       wrong: ['エタノール（第1級アルコール）→ プロピオン酸エチル', '1-プロパノール（ヨードホルム陰性）', 'メタノール（ヨードホルム陰性）'],
       note: 'B = 2-プロパノール（ヨードホルム陽性・第2級）',
       feedback: '完璧！エタノール（1級）と 2-プロパノール（2級）を酸化生成物の還元性で見分けるのは超頻出問題だ！',
@@ -4387,7 +4494,7 @@ const CUSTOM_CLUES = {
       effect: 'orange_to_green',
       observation: '加水分解後のアルコール B はヨードホルム反応が陰性であり、K₂Cr₂O₇ で酸化するとアルデヒドを経て「還元性を持たないカルボン酸」になった。',
       question: 'この結果から確定するアルコール B は？',
-      correct: '1-プロパノール → 酢酸プロピル',
+      correct: '1-プロパノール',
       wrong: ['2-プロパノール（ヨードホルム陽性）', 'エタノール（ヨードホルム陽性）', 'メタノール（酸化で還元性のあるギ酸になる）'],
       note: 'B = 1-プロパノール（ヨードホルム陰性・1級）',
       feedback: '見事！ヨードホルム陰性でメタノールでもない1級アルコール＝1-プロパノール（酢酸プロピル）だ！',
@@ -4410,7 +4517,7 @@ const CUSTOM_CLUES = {
       effect: 'yellow_ppt',
       observation: '生成物 B はヨードホルム反応が陽性で、さらに K₂Cr₂O₇ で酸化すると還元性のあるアルデヒドを経てカルボン酸になった！',
       question: 'ヨードホルム陽性かつ第1級アルコールである B は？',
-      correct: 'エタノール (CH₃CH₂OH) → プロピオン酸エチル',
+      correct: 'エタノール (CH₃CH₂OH)',
       wrong: ['2-プロパノール（第2級アルコール）', '1-プロパノール（ヨードホルム陰性）', 'メタノール（ヨードホルム陰性）'],
       note: 'B = エタノール（ヨードホルム陽性・第1級）',
       feedback: '完璧！第1級アルコールでヨードホルム陽性＝エタノール確定！残りのC₃がプロピオン酸側だ！',
@@ -4433,7 +4540,7 @@ const CUSTOM_CLUES = {
       effect: 'orange_to_green',
       observation: '生成物 B はヨードホルム反応陰性で、K₂Cr₂O₇ で酸化するとホルムアルデヒドを経て「カルボン酸になっても還元性（銀鏡陽性）を示す酸（ギ酸）」になった！',
       question: '酸化してギ酸になるアルコール B は？',
-      correct: 'メタノール (CH₃OH) → 酪酸メチル',
+      correct: 'メタノール (CH₃OH)',
       wrong: ['エタノール (CH₃CH₂OH)', '1-プロパノール', '2-プロパノール'],
       note: 'B = メタノール（酸化→HCHO→ギ酸）',
       feedback: '鋭い！酸化すると最終的にギ酸になるのはメタノールだけ！つまり酪酸メチルだ！',
@@ -4456,7 +4563,7 @@ const CUSTOM_CLUES = {
       effect: 'sparkle',
       observation: '試料 X には不斉炭素原子（C*）が存在し光学異性体を持つ！さらに加水分解後の B はヨードホルム反応も陽性だった。',
       question: '不斉炭素原子を持つ C₄ アルコール側構造は？',
-      correct: 'sec-ブチル基（B = 2-ブタノール）→ ギ酸sec-ブチル',
+      correct: '不斉炭素原子を持つ枝分かれ C₄ アルコール側（第2級）',
       wrong: ['tert-ブチル基（第3級・不斉炭素なし）', 'n-ブチル基（直鎖・不斉炭素なし）', 'イソブチル基（不斉炭素なし）'],
       note: '不斉炭素原子あり・B=2-ブタノール（ヨードホルム陽性）',
       feedback: '大正解！C₅H₁₀O₂ の全9種エステル中で唯一不斉炭素を持つのがギ酸sec-ブチルだ！',
@@ -4479,7 +4586,7 @@ const CUSTOM_CLUES = {
       effect: 'none',
       observation: '加水分解して得たアルコール B（C₄H₁₀O）に酸性 K₂Cr₂O₇ を加えて温めたが、全く酸化されず液色は橙赤色のままだった！',
       question: '酸化されないアルコール B と元のエステルは？',
-      correct: 'B = 第3級アルコール (tert-ブタノール) → ギ酸tert-ブチル',
+      correct: 'B = 第3級アルコール (tert-ブタノール)',
       wrong: ['B = 1-ブタノール（1級）', 'B = 2-ブタノール（2級）', 'B = イソブタノール（1級）'],
       note: '加水分解B = 第3級アルコール（酸化されない）',
       feedback: '完璧！K₂Cr₂O₇で酸化されないのは第3級アルコールだけ＝ギ酸tert-ブチル確定だ！',
@@ -4492,7 +4599,7 @@ const CUSTOM_CLUES = {
       effect: 'sparkle',
       observation: '試料 X（C₄H₁₀O）を旋光計で調べたところ、不斉炭素原子（C*）が存在し光学異性体（鏡像異性体）を持つことが判明した！',
       question: 'C₄H₁₀O の異性体の中で不斉炭素原子を持つ構造は？',
-      correct: 'CH₃-CH*(OH)-CH₂CH₃（2-ブタノール）',
+      correct: '不斉炭素原子に -OH が結合した第2級アルコール構造',
       wrong: ['CH₃CH₂CH₂CH₂OH（1-ブタノール）', '(CH₃)₃COH（2-メチル-2-プロパノール）', 'CH₃CH₂OCH₂CH₃（ジエチルエーテル）'],
       note: '不斉炭素原子 (C*) あり（光学異性体あり）',
       feedback: 'お見事！C₄H₁₀O の全7異性体の中で不斉炭素原子を持つのは 2-ブタノールだけだ！',
@@ -4525,7 +4632,7 @@ const CUSTOM_CLUES = {
       effect: 'none',
       observation: 'さらにヨードホルム反応は陰性、不斉炭素原子も持たないことが確認された。',
       question: '候補のうち、これらを満たす第1級アルコールは？',
-      correct: '2-メチル-1-プロパノール（枝分かれ第1級アルコール）',
+      correct: '枝分かれ構造を持つ第1級アルコール (-CH(CH₃)-CH₂OH)',
       wrong: ['2-ブタノール（第2級・不斉Cあり）', '2-メチル-2-プロパノール（第3級）', 'ジエチルエーテル（エーテル）'],
       note: 'ヨードホルム陰性・不斉Cなし・第1級',
       feedback: '完璧！消去法でただ1つに絞れたね！',
@@ -4548,8 +4655,8 @@ const CUSTOM_CLUES = {
       effect: 'heat_dehydrate',
       observation: '試料 X にはシス-トランス異性体が存在し、加熱すると容易に分子内脱水して環状酸無水物（無水マレイン酸）を生成した！',
       question: '容易に分子内脱水することから確定する立体配置は？',
-      correct: 'シス型（2つの -COOH が同じ側＝マレイン酸）',
-      wrong: ['トランス型（2つの -COOH が反対側＝フマル酸）', 'メチレンマロン酸（幾何異性体なし）', '環状ジエステル（グリコリド）'],
+      correct: 'シス型（2つの -COOH が二重結合の同じ側）',
+      wrong: ['トランス型（2つの -COOH が二重結合の反対側）', 'コハク酸（C=C二重結合なし）', 'リンゴ酸（-OH を持つ飽和酸）'],
       note: 'シス型（分子内脱水して無水マレイン酸生成）',
       feedback: '大正解！2つの -COOH が近いシス型だからこそ容易に分子内脱水するんだね！',
     },
@@ -4562,7 +4669,7 @@ const CUSTOM_CLUES = {
       observation: '試料 X（C₄H₄O₄）は NaHCO₃ で CO₂ を発生して溶け、臭素水の赤褐色を脱色した！',
       question: 'この結果からわかる構造は？',
       correct: '-COOH と C=C 二重結合を持つ不飽和ジカルボン酸',
-      wrong: ['フェノール類', '飽和エステル', '環状ジエステル'],
+      wrong: ['フェノール類', '飽和エステル', '飽和ジカルボン酸（コハク酸）'],
       note: '-COOH あり ＋ C=C 二重結合あり',
       feedback: '正解！さらにシス型かトランス型かを見分けよう！',
     },
@@ -4571,7 +4678,7 @@ const CUSTOM_CLUES = {
       effect: 'heat_none',
       observation: 'シス-トランス異性体が存在するが、加熱しても容易には分子内脱水しなかった！',
       question: '分子内脱水しにくいことから確定する立体配置は？',
-      correct: 'トランス型（2つの -COOH が反対側＝フマル酸）',
+      correct: 'トランス型（2つの -COOH が二重結合の反対側）',
       wrong: ['シス型（マレイン酸）', '幾何異性体を持たない構造', 'オルト位芳香族ジカルボン酸'],
       note: 'トランス型（分子内脱水しない＝フマル酸）',
       feedback: '完璧！-COOH 同士が離れているトランス型＝フマル酸と確定したぞ！',
@@ -4662,9 +4769,9 @@ const CUSTOM_CLUES = {
     {
       reagent: 'NaOH ＆ NaHCO₃ への溶解性',
       effect: 'dissolve',
-      observation: 'NaOH 水溶液にはよく溶けるが、NaHCO₃ 水溶液では発泡せず溶けなかった。',
+      observation: 'NaOH 水溶液にはよく溶けるが、NaHCO₃ 水溶液では発泡せず溶けなかった（また2つの置換基が隣り合うオルト位置換体である）。',
       question: '分子式 C₇H₈O でこの性質を示す構造は？',
-      correct: 'メチル基とフェノール性 -OH を持つクレゾール',
+      correct: 'ベンゼン環のオルト位にメチル基とフェノール性 -OH を持つ構造',
       wrong: ['フェノール (C₆H₆O)', '安息香酸 (C₇H₆O₂)', 'ベンジルアルコール (C₇H₈O)'],
       note: 'C₇H₈O のフェノール類（o-クレゾール）',
       feedback: '完璧！炭素数7のフェノール類＝クレゾールと確定したね！',
@@ -4687,7 +4794,7 @@ const CUSTOM_CLUES = {
       effect: 'purple',
       observation: 'さらに試料 X に FeCl₃ 水溶液を加えると、濃い赤紫色に呈色した！',
       question: '-COOH とフェノール性 -OH の両方を併せ持つ化合物は？',
-      correct: 'サリチル酸 (o-HO-C₆H₄-COOH)',
+      correct: 'ベンゼン環に -COOH とフェノール性 -OH の両方が直結した構造',
       wrong: ['サリチル酸メチル（-COOHなし）', 'アセチルサリチル酸（フェノール性-OHなし）', '安息香酸（フェノール性-OHなし）'],
       note: 'フェノール性 -OH もあり（FeCl₃陽性・両方の性質！）',
       feedback: '大正解！NaHCO₃発泡も FeCl₃呈色も両方陽性になるのがサリチル酸の最大の特徴だ！',
@@ -4710,7 +4817,7 @@ const CUSTOM_CLUES = {
       effect: 'hydrolysis',
       observation: '加水分解すると、FeCl₃陽性＆NaHCO₃発泡の「生成物 A（サリチル酸）」と、ヨードホルム陰性の第1級アルコール「生成物 B（メタノール）」に分離した！',
       question: 'この加水分解結果から確定する構造は？',
-      correct: 'サリチル酸メチル (o-HO-C₆H₄-COOCH₃)',
+      correct: 'フェノール性 -OH を残し、-COOH がメチルエステル化された構造',
       wrong: ['アセチルサリチル酸（アスピリン）', '安息香酸メチル', '酢酸フェニル'],
       note: '加水分解 → サリチル酸(A) ＋ メタノール(B)',
       feedback: '完璧！湿布薬の成分としても有名なサリチル酸メチル確定だ！',
@@ -4733,7 +4840,7 @@ const CUSTOM_CLUES = {
       effect: 'purple',
       observation: '試料 X を加水分解すると、生成物 A（酢酸）と生成物 B に分離し、B に FeCl₃ 水溶液を加えると濃い赤紫色に呈色した！',
       question: '加水分解して初めて FeCl₃ 陽性になる構造は？',
-      correct: 'アセチルサリチル酸（アスピリン：フェノール性 -OH がアセチル化）',
+      correct: '-COOH を残し、フェノール性 -OH がアセチル化されたエステル構造',
       wrong: ['サリチル酸メチル（最初から FeCl₃ 陽性）', 'フタル酸（加水分解されない）', '酢酸フェニル（NaHCO₃ 陰性）'],
       note: '加水分解 → 酢酸(A) ＋ サリチル酸(B: FeCl₃陽性！)',
       feedback: '見事！加水分解前 FeCl₃ 陰性 → 加水分解後 FeCl₃ 陽性こそがアスピリンの決定打だ！',
@@ -4746,7 +4853,7 @@ const CUSTOM_CLUES = {
       effect: 'none',
       observation: '試料 X（C₈H₈O₂）は NaHCO₃ で発泡せず、FeCl₃ 呈色も陰性、銀鏡反応も陰性であった。',
       question: 'この結果から絞り込める C₈H₈O₂ の構造は？',
-      correct: 'ギ酸エステル以外の中性芳香族エステル（酢酸フェニル or 安息香酸メチル）',
+      correct: 'ギ酸エステル以外の中性芳香族エステル (-COO-)',
       wrong: ['フェニル酢酸（NaHCO₃ 陽性）', 'ギ酸ベンジル（銀鏡陽性）', 'o-ヒドロキシアセトフェノン（FeCl₃ 陽性）'],
       note: '中性・非ギ酸芳香族エステル（C₈H₈O₂）',
       feedback: '素晴らしい！受験超頻出の C₈H₈O₂ 異性体5種から一気に2つまで絞れたぞ！',
@@ -4756,7 +4863,7 @@ const CUSTOM_CLUES = {
       effect: 'purple',
       observation: '加水分解で得られた生成物 B に FeCl₃ を加えると青紫色に呈色し、臭素水では白色沈殿を生じた！',
       question: '加水分解でフェノールを生じる元のエステルは？',
-      correct: '酢酸フェニル (CH₃COO-C₆H₅)',
+      correct: 'ベンゼン環がエステル結合の酸素側 (-O-Ar) に直結した構造',
       wrong: ['安息香酸メチル（B = メタノールで FeCl₃ 陰性）', 'ギ酸ベンジル（銀鏡陽性）', 'フェニル酢酸（加水分解しない）'],
       note: '加水分解B = フェノール（FeCl₃陽性・Br₂白色沈殿）',
       feedback: '完璧！ベンゼン環側が -O- に直結している酢酸フェニルだからこそ、加水分解でフェノールが生じるんだ！',
@@ -4779,7 +4886,7 @@ const CUSTOM_CLUES = {
       effect: 'orange_to_green',
       observation: '加水分解後の生成物 B は FeCl₃ 呈色が陰性であり、K₂Cr₂O₇ で酸化される第1級アルコール（メタノール）であった！',
       question: 'B がフェノールではなくメタノールであることから確定する構造は？',
-      correct: '安息香酸メチル (C₆H₅-COOCH₃)',
+      correct: 'ベンゼン環がエステル結合のカルボニル側 (Ar-CO-) に直結した構造',
       wrong: ['酢酸フェニル（B = フェノールで FeCl₃ 陽性）', 'ギ酸ベンジル（銀鏡陽性）', 'o-ヒドロキシアセトフェノン'],
       note: '加水分解A = 安息香酸、B = メタノール（FeCl₃陰性）',
       feedback: '完璧！Bが FeCl₃ 陰性のアルコール側＝安息香酸メチル確定だ！',
@@ -4802,8 +4909,8 @@ const CUSTOM_CLUES = {
       effect: 'heat_dehydrate',
       observation: '試料 X を加熱したところ、容易に分子内脱水して環状の酸無水物（無水フタル酸）を生成した！',
       question: '分子内脱水することから確定する置換位置は？',
-      correct: 'オルト位（1,2-ジカルボン酸＝フタル酸）',
-      wrong: ['パラ位（1,4-ジカルボン酸＝テレフタル酸）', 'メタ位（イソフタル酸）', 'モノカルボン酸（安息香酸）'],
+      correct: '2つの -COOH が隣り合うオルト位（1,2-二置換）構造',
+      wrong: ['2つの -COOH が向かい合うパラ位（1,4-二置換）構造', 'メタ位（イソフタル酸）', 'モノカルボン酸（安息香酸）'],
       note: 'オルト位（加熱脱水で無水フタル酸生成）',
       feedback: '大正解！2つの -COOH が隣り合うオルト位＝フタル酸だからこそ分子内脱水するんだ！',
     },
@@ -4825,7 +4932,7 @@ const CUSTOM_CLUES = {
       effect: 'heat_none',
       observation: '試料 X を加熱したが、分子内脱水による環状酸無水物は生成しなかった！',
       question: '分子内脱水しないことから確定する構造は？',
-      correct: 'パラ位（1,4-ジカルボン酸＝テレフタル酸）',
+      correct: '2つの -COOH が向かい合うパラ位（1,4-二置換）構造',
       wrong: ['オルト位（フタル酸）', 'シス型不飽和酸（マレイン酸）', 'サリチル酸'],
       note: 'パラ位（分子内脱水しない＝テレフタル酸）',
       feedback: '完璧！PET樹脂の原料としても有名なテレフタル酸確定だ！',
@@ -4839,7 +4946,7 @@ const CUSTOM_CLUES = {
       effect: 'bleach_purple',
       observation: '試料 X（C₆H₇N）は希塩酸によく溶け、さらし粉水溶液を加えると鮮やかな赤紫色に呈色した！',
       question: '希塩酸に溶けてさらし粉で赤紫色に呈色する構造は？',
-      correct: 'アニリン（ベンゼン環に -NH₂ が直結）',
+      correct: 'ベンゼン環に第1級アミノ基 (-NH₂) が直結した塩基性アミン',
       wrong: ['アセトアニリド（中性アミド・希HCl不溶）', 'ニトロベンゼン（中性・希HCl不溶）', 'フェノール（弱酸性・NaOH可溶）'],
       note: '塩基性アミン・さらし粉赤紫呈色（アニリン特有！）',
       feedback: '大正解！さらし粉水溶液での赤紫呈色はアニリンを見抜く超重要反応だ！',
@@ -4870,9 +4977,9 @@ const CUSTOM_CLUES = {
     {
       reagent: '加水分解 → 生成物 B のさらし粉＆ジアゾ反応',
       effect: 'azo_orange',
-      observation: '試料 X を加水分解すると酸 A（酢酸）とアミン B に分離し、B はさらし粉で赤紫色に呈色＆ジアゾカップリングで赤橙色沈殿を生じた！',
+      observation: '試料 X を強酸（または強塩基）と長時間加熱（還流）して加水分解し、中和して遊離させると、酸 A（酢酸）とアミン B に分離！B はさらし粉で赤紫色に呈色＆ジアゾカップリングで赤橙色沈殿を生じた！',
       question: '加水分解で酢酸とアニリンを生じる元の構造は？',
-      correct: 'アセトアニリド (C₆H₅-NHCO-CH₃)',
+      correct: 'ベンゼン環のアミノ基がアセチル化された芳香族アミド (-NHCOCH₃)',
       wrong: ['ベンズアミド (C₆H₅-CONH₂)', 'ニトロベンゼン（加水分解されない）', 'p-アミノ安息香酸'],
       note: '加水分解 → 酢酸(A) ＋ アニリン(B: さらし粉・ジアゾ陽性！)',
       feedback: '完璧！加水分解してアニリンが生じる＝アセトアニリド確定だ！',
@@ -4893,9 +5000,9 @@ const CUSTOM_CLUES = {
     {
       reagent: '希塩酸溶解 ＆ ジアゾカップリング',
       effect: 'azo_orange',
-      observation: 'さらに試料 X は希塩酸にもよく溶け、ジアゾカップリングで赤橙色のアゾ染料を生じた！',
+      observation: 'さらに試料 X は希塩酸にもよく溶け、ジアゾカップリングで赤橙色のアゾ染料を生じた（またベンゼン環の対称性が高く、環上Hの環境が2種類のみのパラ位置換体である）。',
       question: 'フェノール性 -OH と芳香族第1級アミン (-NH₂) を併せ持つ両性化合物は？',
-      correct: 'p-アミノフェノール (H₂N-C₆H₄-OH)',
+      correct: 'パラ位に芳香族 -NH₂ とフェノール性 -OH を併せ持つ両性構造',
       wrong: ['p-アミノ安息香酸（NaHCO₃ 発泡・FeCl₃ 陰性）', 'アニリン（FeCl₃ 陰性・NaOH 不溶）', 'アセトアニリド（中性）'],
       note: '芳香族 -NH₂ もあり（希HCl可溶・ジアゾ陽性）',
       feedback: '完璧！塩基（NaOH）にも酸（HCl）にも溶ける両性の p-アミノフェノールだ！',
@@ -4916,9 +5023,9 @@ const CUSTOM_CLUES = {
     {
       reagent: '希塩酸溶解 ＆ ジアゾカップリング',
       effect: 'azo_orange',
-      observation: 'さらに試料 X は希塩酸にも溶け、ジアゾカップリングで赤橙色のアゾ染料が生成した！',
+      observation: 'さらに試料 X は希塩酸にも溶け、ジアゾカップリングで赤橙色のアゾ染料が生成した（またベンゼン環の対称性が高く、環上Hの環境が2種類のみのパラ位置換体である）。',
       question: '-COOH と芳香族 -NH₂ を併せ持つ両性化合物は？',
-      correct: 'p-アミノ安息香酸 (H₂N-C₆H₄-COOH)',
+      correct: 'パラ位に芳香族 -NH₂ と -COOH を併せ持つ両性構造',
       wrong: ['p-アミノフェノール（FeCl₃ 陽性・NaHCO₃ 陰性）', '安息香酸（Nなし・ジアゾ陰性）', 'ニトロベンゼン（中性）'],
       note: '芳香族 -NH₂ もあり（希HCl可溶・ジアゾ陽性）',
       feedback: '完璧！両性芳香族アミノ酸の p-アミノ安息香酸確定だ！',
@@ -4941,8 +5048,8 @@ const CUSTOM_CLUES = {
       effect: 'none',
       observation: '加熱しても加水分解は起こらず、ジアゾカップリングも陰性であった（なお Sn + HCl で還元するとアニリンになる）。',
       question: '加水分解されず、還元でアニリンになる官能基は？',
-      correct: 'ニトロ基 (-NO₂) → ニトロベンゼン',
-      wrong: ['アミド結合 (-NHCO-) → アセトアニリド', 'アミノ基 (-NH₂) → アニリン', 'カルボキシ基 (-COOH)'],
+      correct: 'ニトロ基 (-NO₂)',
+      wrong: ['アミド結合 (-NHCO-)', 'アミノ基 (-NH₂)', 'カルボキシ基 (-COOH)'],
       note: '加水分解陰性・ニトロ基 (-NO₂) 確定',
       feedback: '大正解！ニトロベンゼン (C₆H₅NO₂) で間違いなしだ！',
     },
@@ -5044,8 +5151,9 @@ function buildExtraAdvancedStep(compound) {
     };
   }
 
-  // 3) フォールバック：ヨードホルム反応の確認
+  // 3) フォールバック：ヨードホルム反応の確認（芳香族/脂肪族に応じた適切な誤答）
   const pos = !!(t.iodoform && t.iodoform.positive);
+  const isAromatic = (f.C || 0) >= 6;
   return {
     reagent: '追加実験：ヨードホルム反応 (I₂ + NaOH 加熱)',
     effect: pos ? 'yellow_ppt' : 'none',
@@ -5055,11 +5163,21 @@ function buildExtraAdvancedStep(compound) {
     question: 'このヨードホルム反応の結果からわかることは？',
     correct: pos
       ? 'CH₃CO- または CH₃CH(OH)- 構造を持つ'
-      : 'CH₃CO-R（ケトン/アセトアルデヒド）や CH₃CH(OH)-R 構造は持たない',
+      : 'CH₃CO-R（メチルケトン等）や CH₃CH(OH)-R 構造は持たない',
     wrong: pos
-      ? ['ベンゼン環に -COOH が直結している', 'ニトロ基を持つ', 'エーテル結合のみを持つ']
-      : ['アセトフェノン骨格 (CH₃CO-Ar) を持つ', 'エタノール構造を持つ', '2-プロパノール構造を持つ'],
-    note: pos ? 'ヨードホルム反応陽性' : `ヨードホルム反応陰性（${window.ChemLab.formatFormulaText(f)}）`,
+      ? ['ベンゼン環に -COOH が直結している', 'ニトロ基 (-NO₂) を持つ', 'エーテル結合のみを持つ']
+      : isAromatic
+      ? [
+          'アセトフェノン骨格 (Ar-COCH₃) を持つ',
+          '1-フェニルエタノール骨格 (Ar-CH(OH)CH₃) を持つ',
+          'o-ヒドロキシアセトフェノン骨格を持つ',
+        ]
+      : [
+          'CH₃CO-R を持つメチルケトンである',
+          'CH₃CH(OH)-R を持つアルコールである',
+          'アセトアルデヒド構造 (CH₃CHO) を持つ',
+        ],
+    note: pos ? 'ヨードホルム反応陽性' : 'ヨードホルム反応陰性（メチルケトン等除外）',
     feedback: 'よし！これでアセチルケトン型などの異性体もしっかり除外できたぞ！',
   };
 }
@@ -5070,26 +5188,69 @@ function buildExtraAdvancedStep(compound) {
 function buildConfirmStep(compound) {
   const f = compound.formula;
   const t = compound.tests;
+  const allComps = window.ChemLab.COMPOUNDS;
 
-  // エステル・アミド（加水分解あり）の確認ステップ
+  // エステル・アミド（加水分解あり）の確認ステップ：同系統・候補化合物から動的にダミーA・Bペアを生成
   if (t.hydrolysis && t.hydrolysis.positive && compound.hydrolysisProducts) {
     const hp = compound.hydrolysisProducts;
-    const compA = window.ChemLab.COMPOUNDS[hp.A];
-    const compB = window.ChemLab.COMPOUNDS[hp.B];
+    const compA = allComps[hp.A];
+    const compB = allComps[hp.B];
+    const correctLabel = `A = ${compA.name} ／ B = ${compB.name}`;
+    const isAromatic = (f.C || 0) >= 6;
+
+    const dummySet = new Set();
+    // 1) 候補カード内の他の加水分解可能化合物から優先抽出
+    for (const cid of compound.candidates || []) {
+      if (cid === compound.id) continue;
+      const cand = allComps[cid];
+      if (cand && cand.hydrolysisProducts) {
+        const cA = allComps[cand.hydrolysisProducts.A];
+        const cB = allComps[cand.hydrolysisProducts.B];
+        if (cA && cB) {
+          const lbl = `A = ${cA.name} ／ B = ${cB.name}`;
+          if (lbl !== correctLabel) dummySet.add(lbl);
+        }
+      }
+    }
+    // 2) 足りない場合は同系統（芳香族同士 / 脂肪族同士）の加水分解可能化合物から補充
+    for (const other of Object.values(allComps)) {
+      if (dummySet.size >= 3) break;
+      if (other.id === compound.id || !other.hydrolysisProducts) continue;
+      const otherAromatic = (other.formula.C || 0) >= 6;
+      if (otherAromatic !== isAromatic) continue;
+      const oA = allComps[other.hydrolysisProducts.A];
+      const oB = allComps[other.hydrolysisProducts.B];
+      if (oA && oB) {
+        const lbl = `A = ${oA.name} ／ B = ${oB.name}`;
+        if (lbl !== correctLabel) dummySet.add(lbl);
+      }
+    }
+    // 3) 念のためのフォールバック（同系統の自然な組み合わせ）
+    const fallbacks = isAromatic
+      ? [
+          'A = 安息香酸 ／ B = フェノール',
+          'A = ギ酸 ／ B = ベンジルアルコール',
+          'A = 酢酸 ／ B = メタノール',
+          'A = サリチル酸 ／ B = エタノール',
+        ]
+      : [
+          'A = ギ酸 ／ B = 1-プロパノール',
+          'A = 酢酸 ／ B = 2-プロパノール',
+          'A = プロピオン酸 ／ B = メタノール',
+          'A = 酪酸 ／ B = エタノール',
+        ];
+    for (const fb of fallbacks) {
+      if (dummySet.size >= 3) break;
+      if (fb !== correctLabel) dummySet.add(fb);
+    }
+
     return {
       reagent: '最終確認：加水分解の結合パートナー照合',
       effect: 'hydrolysis',
       observation: 'ここまでの分析で加水分解により生成物 A と B に分かれることがわかっている。元の分子式と A・B の組み合わせを最終確認しよう。',
       question: '加水分解で生じる「酸成分 A」と「アルコール/フェノール/アミン成分 B」の正しい組み合わせは？',
-      correct: `A = ${compA.name} ／ B = ${compB.name}`,
-      wrong: [
-        'A = ギ酸 ／ B = 2-メチル-2-プロパノール',
-        'A = 安息香酸 ／ B = エタノール',
-        'A = 酢酸 ／ B = 1-ブタノール',
-        'A = プロピオン酸 ／ B = 2-プロパノール',
-      ]
-        .filter((w) => w !== `A = ${compA.name} ／ B = ${compB.name}`)
-        .slice(0, 3),
+      correct: correctLabel,
+      wrong: [...dummySet].slice(0, 3),
       note: `最終確認：加水分解で ${compA.name} ＋ ${compB.name}`,
       feedback: `完璧！加水分解の生成物 A（${compA.name}）と B（${compB.name}）をつなぎ直せば元の構造が一意に決まるぞ！`,
     };
@@ -5122,7 +5283,20 @@ function buildConfirmStep(compound) {
     };
   }
 
-  // その他の化合物：酸塩基・官能基クロスチェック
+  // その他の化合物：酸塩基・官能基クロスチェック（全選択肢の表記フォーマットを統一）
+  const isAromatic = (f.C || 0) >= 6;
+  const catPool = isAromatic
+    ? [
+        '芳香族カルボン酸',
+        '芳香族ジカルボン酸',
+        '芳香族アルコール',
+        '芳香族ニトロ化合物',
+        '芳香族第1級アミン',
+        '芳香族アミノ酸',
+        '芳香族アミド',
+      ]
+    : ['第1級アルコール', '第2級アルコール', '第3級アルコール', 'カルボン酸', 'エーテル', 'ケトン'];
+
   return {
     reagent: '最終確認：酸塩基・官能基のクロスチェック',
     effect: t.sodium.positive ? 'bubbles' : 'none',
@@ -5134,10 +5308,8 @@ function buildConfirmStep(compound) {
         : '酸にも塩基にも反応しない中性物質'
     }」であった。`,
     question: 'この最終クロスチェックと矛盾しない分類は？',
-    correct: `${compound.category}（${window.ChemLab.formatFormulaText(f)}）`,
-    wrong: ['芳香族ニトロ化合物', '第3級アルコール', '環状ジエステル', '芳香族第1級アミン']
-      .filter((w) => !compound.category.includes(w) && w !== compound.category)
-      .slice(0, 3),
+    correct: compound.category,
+    wrong: catPool.filter((w) => w !== compound.category && !compound.category.includes(w)).slice(0, 3),
     note: `最終確認：${compound.category} として矛盾なし`,
     feedback: '素晴らしい論理の組み立てだ！すべての手がかりが揃ったので Phase 3 で最終構造を決定しよう！',
   };
@@ -5592,6 +5764,26 @@ const STRUCTURES = {
     label(62, 85, 'H') +
     line(134, 62, 154, 78) +
     label(176, 86, 'COOH', { size: 12 }),
+
+  succinic_acid: () =>
+    label(30, 58, 'HOOC', { size: 11.5 }) +
+    line(54, 58, 72, 58) +
+    label(87, 58, 'CH2', { size: 11.5 }) +
+    line(103, 58, 120, 58) +
+    label(135, 58, 'CH2', { size: 11.5 }) +
+    line(151, 58, 168, 58) +
+    label(192, 58, 'COOH', { size: 11.5 }),
+
+  malic_acid: () =>
+    label(30, 68, 'HOOC', { size: 11.5 }) +
+    line(54, 68, 73, 68) +
+    label(86, 68, 'CH', { size: 11.5 }) +
+    line(86, 56, 86, 36) +
+    label(86, 25, 'OH', { size: 11.5 }) +
+    line(99, 68, 120, 68) +
+    label(135, 68, 'CH2', { size: 11.5 }) +
+    line(151, 68, 168, 68) +
+    label(192, 68, 'COOH', { size: 11.5 }),
 
   methylenemalonic_acid: () =>
     label(46, 56, 'CH2') +
@@ -6570,6 +6762,14 @@ class SoundEngine {
     });
   }
 
+  combo(streak = 1) {
+    const mult = Math.min(1.45, 1 + Math.max(0, streak - 1) * 0.06);
+    const notes = [523.25, 659.25, 783.99, 1046.5].map((n) => n * mult);
+    notes.forEach((n, i) => {
+      this._tone(n, i === 3 ? 0.32 : 0.09, 'triangle', 0.09, i * 0.08);
+    });
+  }
+
   wrong() {
     this._tone(210, 0.16, 'sawtooth', 0.08, 0, 175);
     this._tone(160, 0.24, 'sawtooth', 0.08, 0.15, 130);
@@ -6594,13 +6794,17 @@ const {
 } = window.ChemLab;
 
 const STORAGE_KEY = 'organic_chem_lab_discovered_v1';
+const PROGRESS_KEY = 'organic_chem_lab_progress_v2';
 
 const DIFF_LABELS = {
   basic: '基礎編',
   standard: '標準編',
   advanced: '難関編',
   all: '総合演習',
+  weak: '苦手克服',
 };
+
+const RANK_ORDER = { 'S+': 5, S: 4, A: 3, B: 2, C: 1, D: 0 };
 
 const TUTORIAL_STEPS = [
   {
@@ -6650,6 +6854,34 @@ const TUTORIAL_STEPS = [
   },
 ];
 
+function loadProgress() {
+  try {
+    const raw2 = localStorage.getItem(PROGRESS_KEY);
+    if (raw2) {
+      const p = JSON.parse(raw2);
+      return {
+        discovered: new Set(p.discovered || []),
+        bestRank: p.bestRank || {},
+        weak: new Set(p.weak || []),
+        bestStreak: Number(p.bestStreak || 0),
+        totalSolved: Number(p.totalSolved || 0),
+      };
+    }
+    const raw1 = localStorage.getItem(STORAGE_KEY);
+    return {
+      discovered: new Set(raw1 ? JSON.parse(raw1) : []),
+      bestRank: {},
+      weak: new Set(),
+      bestStreak: 0,
+      totalSolved: 0,
+    };
+  } catch {
+    return { discovered: new Set(), bestRank: {}, weak: new Set(), bestStreak: 0, totalSolved: 0 };
+  }
+}
+
+const initialProgress = loadProgress();
+
 // ==================== State ====================
 const state = {
   phase: 'title', // title | phase1 | phase2 | phase3 | phase4
@@ -6661,11 +6893,13 @@ const state = {
   tutorialPractice: false,
   tutorialStep: 0,
   queue: [],
+  lastCompoundId: null,
   compound: null,
   ea: null,
   eaHintStep: 0,
   lives: 3,
   mistakes: 0,
+  usedHint: false,
   ihdChecked: false,
   // Phase 2: Professor's Clue Steps
   clueSteps: [],
@@ -6681,25 +6915,29 @@ const state = {
   // Calculator & Encyclopedia
   calcExpr: '0',
   calcJustEvaluated: false,
-  discovered: loadDiscovered(),
+  discovered: initialProgress.discovered,
+  bestRank: initialProgress.bestRank,
+  weak: initialProgress.weak,
+  bestStreak: initialProgress.bestStreak,
+  totalSolved: initialProgress.totalSolved,
   modalTab: 'compounds',
+  dexDetailId: null,
   streak: 0,
   hideCardNames: false,
 };
 
-function loadDiscovered() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return new Set();
-    return new Set(JSON.parse(raw));
-  } catch {
-    return new Set();
-  }
-}
-
 function saveDiscovered() {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify([...state.discovered]));
+    localStorage.setItem(
+      PROGRESS_KEY,
+      JSON.stringify({
+        discovered: [...state.discovered],
+        bestRank: state.bestRank,
+        weak: [...state.weak],
+        bestStreak: state.bestStreak,
+        totalSolved: state.totalSolved,
+      })
+    );
   } catch {
     // ignore storage errors
   }
@@ -6737,6 +6975,7 @@ const els = {
   notebookContent: $('notebook-content'),
   titleProgress: $('title-progress'),
   tutorialBadge: $('tutorial-badge'),
+  weakModeDesc: $('weak-mode-desc'),
   // Phase 1
   eaLead: $('ea-lead'),
   eaSample: $('ea-sample'),
@@ -6855,7 +7094,15 @@ function updateHeaderStatus() {
   }
   if (els.titleProgress) {
     const total = getPlayableIds('all').length;
-    els.titleProgress.textContent = `🧬 図鑑 ${state.discovered.size}/${total} ｜ 🔥 連続 ${state.streak}`;
+    const crownCount = Object.values(state.bestRank).filter((r) => r === 'S+').length;
+    els.titleProgress.textContent = `🧬 図鑑 ${state.discovered.size}/${total} (👑S+:${crownCount}) ｜ 🏆 最高連勝 ${state.bestStreak}`;
+  }
+  if (els.weakModeDesc) {
+    const wc = state.weak.size;
+    els.weakModeDesc.textContent =
+      wc > 0
+        ? `現在 ${wc} 問の苦手化合物を集中復習（Sランク以上で克服！）`
+        : 'ミス記録なし（苦手なし時は総合演習から出題）';
   }
   if (els.tutorialBadge) {
     els.tutorialBadge.hidden = state.discovered.size > 0;
@@ -6874,9 +7121,25 @@ function shuffle(arr) {
 // ==================== Game Flow ====================
 function pickNextCompound() {
   if (state.queue.length === 0) {
-    state.queue = shuffle(getPlayableIds(state.settings.difficulty));
+    let pool =
+      state.settings.difficulty === 'weak'
+        ? [...state.weak].filter((id) => COMPOUNDS[id]?.playable)
+        : getPlayableIds(state.settings.difficulty);
+    if (pool.length === 0) pool = getPlayableIds('all');
+
+    // 未発見の化合物を優先的に前半（popされる末尾側）へ配置
+    const undiscovered = shuffle(pool.filter((id) => !state.discovered.has(id)));
+    const discovered = shuffle(pool.filter((id) => state.discovered.has(id)));
+    state.queue = [...discovered, ...undiscovered];
+
+    // キュー境界での同一化合物2連続出題を確実に防止
+    if (state.queue.length > 1 && state.queue[state.queue.length - 1] === state.lastCompoundId) {
+      const topIdx = state.queue.length - 1;
+      [state.queue[0], state.queue[topIdx]] = [state.queue[topIdx], state.queue[0]];
+    }
   }
   const id = state.queue.pop();
+  state.lastCompoundId = id;
   return COMPOUNDS[id];
 }
 
@@ -6887,6 +7150,7 @@ function startNewProblem(forcedId = null, isTutorialPractice = false) {
   state.ea = generateElementalAnalysis(compound);
   state.eaHintStep = 0;
   state.mistakes = 0;
+  state.usedHint = false;
   state.ihdChecked = false;
   state.clueSteps = getClueSteps(compound);
   state.clueIdx = 0;
@@ -6948,6 +7212,7 @@ function setupPhase1() {
 
 function showEAHint() {
   sound.click();
+  state.usedHint = true;
   const ea = state.ea;
   const { C, H, O, N = 0 } = state.compound.formula;
   state.eaHintStep++;
@@ -7020,7 +7285,19 @@ function handlePhase1Submit(e) {
         'surprised'
       );
     } else {
-      showEAHint();
+      const okEls = [];
+      const badEls = [];
+      (cVal === f.C ? okEls : badEls).push('C');
+      (hVal === f.H ? okEls : badEls).push('H');
+      (oVal === f.O ? okEls : badEls).push('O');
+      if (trueN > 0 || nVal > 0) (nVal === trueN ? okEls : badEls).push('N');
+      const partial = okEls.length > 0 ? `【${okEls.join('・')} は正解！】${badEls.join('・')} の数を見直してみよう！\n` : '';
+      const ea = state.ea;
+      setDialogue(
+        '👨‍🔬 教授',
+        `${partial}CO₂(${ea.co2Mg}mg)×12/44=C質量、H₂O(${ea.h2oMg}mg)×2/18=H質量、残りからO質量を求めて原子量で割ろう！`,
+        'surprised'
+      );
     }
   }
 }
@@ -7206,9 +7483,9 @@ function renderClueStep(isInitial = false) {
   }
   playEffectWithSound(step.effect);
 
-  // 4択ボタン生成
+  // 4択ボタン生成（数字キー 1〜4 対応）
   els.clueChoices.innerHTML = '';
-  const keys = ['A', 'B', 'C', 'D'];
+  const keys = ['1', '2', '3', '4'];
   step.options.forEach((opt, i) => {
     const btn = document.createElement('button');
     btn.type = 'button';
@@ -7356,6 +7633,7 @@ function renderNotebook() {
 
 function showLabHint() {
   sound.click();
+  state.usedHint = true;
   const step = state.clueSteps[state.clueIdx];
   const f = state.compound.formula;
   const ihd = calcIHD(f);
@@ -7637,29 +7915,52 @@ function finishProblem(success, failReason = '') {
   let title = '再挑戦しよう！';
   if (success) {
     state.streak++;
-    if (state.mistakes === 0) {
+    state.totalSolved++;
+    if (state.streak > state.bestStreak) state.bestStreak = state.streak;
+
+    if (state.mistakes === 0 && !state.usedHint) {
+      rank = 'S+';
+      title = state.tutorialPractice
+        ? 'チュートリアル完了！ノーヒント王冠！'
+        : '👑 ノーヒント完全制覇！学会大賞！';
+      state.weak.delete(c.id);
+    } else if (state.mistakes === 0) {
       rank = 'S';
       title = state.tutorialPractice ? 'チュートリアル完了！完璧な推理だ！' : '論文採択・学会賞！ノーミス完全解明！';
+      state.weak.delete(c.id);
     } else if (state.mistakes === 1) {
       rank = 'A';
       title = '優秀な研究発表！論理の筋が通っているぞ！';
+      state.weak.add(c.id);
     } else if (state.mistakes === 2) {
       rank = 'B';
       title = '構造決定に成功！次はノーミスを狙おう！';
+      state.weak.add(c.id);
     } else {
       rank = 'C';
       title = 'なんとか解明！解説で要点を復習しよう！';
+      state.weak.add(c.id);
     }
+
+    const prevRank = state.bestRank[c.id];
+    if (!prevRank || (RANK_ORDER[rank] || 0) > (RANK_ORDER[prevRank] || 0)) {
+      state.bestRank[c.id] = rank;
+    }
+    saveDiscovered();
+    if (typeof sound.combo === 'function') sound.combo(state.streak);
   } else {
     state.streak = 0;
+    state.weak.add(c.id);
+    saveDiscovered();
     rank = 'D';
     title = failReason || '研究費（ライフ）切れ…！';
   }
 
+  const comboTag = success && state.streak >= 2 ? ` 🔥 ${state.streak} COMBO!` : '';
   els.resultBanner.classList.toggle('fail', !success);
   els.resultRank.textContent = rank;
-  els.resultTitle.textContent = title;
-  els.resultStats.textContent = `推理ステップ: ${state.deducedNotes.length}/${state.clueSteps.length} / ミス: ${state.mistakes}回 / 🔥連続正解: ${state.streak}`;
+  els.resultTitle.textContent = title + comboTag;
+  els.resultStats.textContent = `推理ステップ: ${state.deducedNotes.length}/${state.clueSteps.length} / ミス: ${state.mistakes}回 / 🔥連続: ${state.streak} (最高:${state.bestStreak})`;
 
   els.answerSvg.innerHTML = renderStructureSVG(c.id);
   els.answerCategory.textContent = c.category;
@@ -7728,13 +8029,22 @@ function renderTutorialStep() {
 function openEncyclopedia(tab = null) {
   sound.click();
   if (tab) state.modalTab = tab;
+  state.dexDetailId = null;
   if (els.modal) els.modal.hidden = false;
   renderEncyclopedia();
 }
 
 function closeEncyclopedia() {
   sound.click();
+  state.dexDetailId = null;
   if (els.modal) els.modal.hidden = true;
+}
+
+function renderRankBadge(br) {
+  if (br === 'S+') return '<span class="dex-rank-crown">👑S+</span>';
+  if (br === 'S') return '<span class="dex-rank-s">★S</span>';
+  if (br) return `<span class="dex-diff">${br}</span>`;
+  return '';
 }
 
 function renderEncyclopedia() {
@@ -7748,6 +8058,55 @@ function renderEncyclopedia() {
   });
 
   if (state.modalTab === 'compounds') {
+    // 詳細解説ビュー
+    if (state.dexDetailId && COMPOUNDS[state.dexDetailId]) {
+      const c = COMPOUNDS[state.dexDetailId];
+      const f = c.formula;
+      const mw = calcMW(f);
+      const ihd = calcIHD(f);
+      const br = state.bestRank[c.id];
+      const posTests = EXPERIMENTS.filter((e) => c.tests[e.id]?.positive)
+        .map((e) => `${e.icon} ${e.shortName}`)
+        .join(' ／ ');
+
+      els.modalBody.innerHTML = `
+        <div class="dex-detail">
+          <div class="dex-detail-head">
+            <button type="button" class="btn-subtle" id="btn-dex-back">← 図鑑一覧に戻る</button>
+            <div>${renderRankBadge(br)} <span class="dex-diff">${DIFF_LABELS[c.difficulty]}</span></div>
+          </div>
+          <div class="answer-reveal">
+            <div class="answer-svg-box">${renderStructureSVG(c.id)}</div>
+            <div class="answer-meta">
+              <span class="answer-cat">${c.category}</span>
+              <h3 class="answer-name">${c.name}</h3>
+              <p class="answer-sub">${formatFormulaHTML(f)} ／ 分子量 M = ${mw} ／ 不飽和度 IHD = ${ihd}</p>
+              <p class="answer-iupac">IUPAC名: ${c.iupac}</p>
+            </div>
+          </div>
+          <div class="ea-data-card">
+            <p class="ea-lead">🧪 主な陽性反応</p>
+            <p class="ea-note" style="margin:0;color:var(--pos-text);font-weight:700;">${posTests || 'なし（中性・不活性）'}</p>
+          </div>
+          <div class="explanation-box">
+            <h3>👨‍🔬 教授の詳しい解説</h3>
+            <ol class="explanation-steps">
+              <li><strong>不飽和度・分子式からわかること：</strong>${c.explanation.ihd}</li>
+              <li><strong>決定打となった反応：</strong>${c.explanation.key}</li>
+              <li><strong>他の異性体を除外できる理由：</strong>${c.explanation.exclude}</li>
+            </ol>
+          </div>
+        </div>
+      `;
+      on($('btn-dex-back'), 'click', () => {
+        sound.click();
+        state.dexDetailId = null;
+        renderEncyclopedia();
+      });
+      return;
+    }
+
+    // 一覧ビュー
     let html = '<div class="dex-grid">';
     for (const id of playableIds) {
       const c = COMPOUNDS[id];
@@ -7756,15 +8115,17 @@ function renderEncyclopedia() {
         const posTests = EXPERIMENTS.filter((e) => c.tests[e.id]?.positive)
           .map((e) => e.shortName)
           .join(' / ');
+        const rankBadge = renderRankBadge(state.bestRank[id]);
         html += `
-          <div class="dex-card">
+          <div class="dex-card unlocked" data-dex-id="${id}" tabindex="0" role="button" aria-label="${c.name}の詳細解説を見る">
             <div class="dex-card-head">
-              <strong>${c.name}</strong>
+              <strong>${c.name}${rankBadge}</strong>
               <span class="dex-diff">${DIFF_LABELS[c.difficulty]}</span>
             </div>
             ${renderStructureSVG(id)}
             <div class="card-formula">${formatFormulaHTML(c.formula)} (${c.category})</div>
             <div class="card-formula" style="margin-top:4px;">陽性: ${posTests || 'なし（中性・不活性）'}</div>
+            <div class="dex-more">📖 詳細解説を見る →</div>
           </div>
         `;
       } else {
@@ -7779,7 +8140,23 @@ function renderEncyclopedia() {
     }
     html += '</div>';
     els.modalBody.innerHTML = html;
+
+    els.modalBody.querySelectorAll('.dex-card.unlocked').forEach((card) => {
+      const openDetail = () => {
+        sound.click();
+        state.dexDetailId = card.dataset.dexId;
+        renderEncyclopedia();
+      };
+      card.addEventListener('click', openDetail);
+      card.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          openDetail();
+        }
+      });
+    });
   } else {
+    state.dexDetailId = null;
     const rows = REACTION_REFERENCE.map(
       (r) => `<tr><td><strong>${r.reagent}</strong></td><td>${r.target}</td><td>${r.obs}</td></tr>`
     ).join('');
@@ -7989,7 +8366,13 @@ document.addEventListener('keydown', (e) => {
       closeTutorial();
     } else if (els.modal && !els.modal.hidden) {
       e.preventDefault();
-      closeEncyclopedia();
+      if (state.dexDetailId) {
+        sound.click();
+        state.dexDetailId = null;
+        renderEncyclopedia();
+      } else {
+        closeEncyclopedia();
+      }
     } else if (state.phase === 'phase3') {
       e.preventDefault();
       sound.click();
@@ -8000,6 +8383,31 @@ document.addEventListener('keydown', (e) => {
   }
 
   if (isTyping || (els.modal && !els.modal.hidden) || (els.tutModal && !els.tutModal.hidden)) return;
+
+  // Phase 2: 数字キー 1〜4 で4択を即座に選択
+  if (state.phase === 'phase2' && !state.clueSolved && ['1', '2', '3', '4'].includes(e.key)) {
+    const idx = Number(e.key) - 1;
+    const btns = els.clueChoices ? els.clueChoices.querySelectorAll('.clue-choice-btn') : [];
+    if (btns[idx] && !btns[idx].disabled) {
+      e.preventDefault();
+      btns[idx].click();
+      return;
+    }
+  }
+
+  if (e.key === 'Enter') {
+    if (state.phase === 'phase2' && state.clueSolved) {
+      e.preventDefault();
+      advanceClueOrPhase3();
+      return;
+    }
+    if (state.phase === 'phase4' && document.activeElement?.tagName !== 'BUTTON') {
+      e.preventDefault();
+      sound.select();
+      startNewProblem(null, false);
+      return;
+    }
+  }
 
   if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
     const activeContainer = state.phase === 'title' ? els.titleScreen : els.panels[state.phase];
