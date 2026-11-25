@@ -2141,19 +2141,19 @@ summary:focus-visible {
       </div>
 
       <div class="setting-group">
-        <label class="setting-label">試料残量・ルール</label>
-        <div class="option-row three-col" id="opt-mode" role="radiogroup" aria-label="試料残量ルール">
+        <label class="setting-label">ライフ・ルール</label>
+        <div class="option-row three-col" id="opt-mode" role="radiogroup" aria-label="ライフルール">
           <button type="button" class="opt-btn selected" data-value="normal">
             <strong>通常</strong>
-            <span>試料10回 / ライフ3</span>
+            <span>ライフ3 / ノーミスでS</span>
           </button>
           <button type="button" class="opt-btn" data-value="challenge">
-            <strong>研究費節約</strong>
-            <span>試料5回 / 最少手数狙い</span>
+            <strong>実戦チャレンジ</strong>
+            <span>ライフ2 / 緊張感アップ</span>
           </button>
           <button type="button" class="opt-btn" data-value="practice">
             <strong>練習</strong>
-            <span>試料・ライフ無制限</span>
+            <span>ライフ無制限・じっくり学習</span>
           </button>
         </div>
       </div>
@@ -4536,7 +4536,7 @@ const CUSTOM_CLUES = {
     {
       reagent: 'NaHCO₃ 水溶液 ＆ 臭素水 (Br₂)',
       effect: 'decolor',
-      observation: '試料 X（C₄H₄O₄, 不飽和度3）は NaHCO₃ で激しく CO₂ を発生し、さらに臭素水の赤褐色を速やかに脱色した！',
+      observation: '試料 X（C₄H₄O₄）は NaHCO₃ で激しく CO₂ を発生し、さらに臭素水の赤褐色を速やかに脱色した！',
       question: 'この2つの反応からわかる官能基の組み合わせは？',
       correct: 'カルボキシ基 (-COOH) と C=C 二重結合',
       wrong: ['フェノール性 -OH とベンゼン環', 'エステル結合のみ', 'アルデヒド基とエーテル結合'],
@@ -4559,7 +4559,7 @@ const CUSTOM_CLUES = {
     {
       reagent: 'NaHCO₃ 水溶液 ＆ 臭素水 (Br₂)',
       effect: 'decolor',
-      observation: '試料 X（C₄H₄O₄, 不飽和度3）は NaHCO₃ で CO₂ を発生して溶け、臭素水の赤褐色を脱色した！',
+      observation: '試料 X（C₄H₄O₄）は NaHCO₃ で CO₂ を発生して溶け、臭素水の赤褐色を脱色した！',
       question: 'この結果からわかる構造は？',
       correct: '-COOH と C=C 二重結合を持つ不飽和ジカルボン酸',
       wrong: ['フェノール類', '飽和エステル', '環状ジエステル'],
@@ -4583,7 +4583,7 @@ const CUSTOM_CLUES = {
     {
       reagent: '塩化鉄(III) (FeCl₃) 水溶液',
       effect: 'purple',
-      observation: '試料 X（C₆H₆O, 不飽和度4）に FeCl₃ 水溶液を加えると、鮮やかな青紫色〜赤紫色に呈色した！',
+      observation: '試料 X（C₆H₆O）に FeCl₃ 水溶液を加えると、鮮やかな青紫色〜赤紫色に呈色した！',
       question: 'FeCl₃ 水溶液の呈色反応から確定する構造は？',
       correct: 'フェノール性ヒドロキシ基（ベンゼン環に直結した -OH）',
       wrong: ['アルコール性ヒドロキシ基 (-CH₂OH)', 'カルボキシ基 (-COOH)', 'エーテル結合 (-OCH₃)'],
@@ -4606,7 +4606,7 @@ const CUSTOM_CLUES = {
     {
       reagent: '炭酸水素ナトリウム (NaHCO₃) 水溶液',
       effect: 'bubbles',
-      observation: '試料 X（C₇H₆O₂, 不飽和度5）は冷水には溶けにくいが、NaHCO₃ 水溶液には CO₂ を発泡してよく溶けた！',
+      observation: '試料 X（C₇H₆O₂）は冷水には溶けにくいが、NaHCO₃ 水溶液には CO₂ を発泡してよく溶けた！',
       question: 'NaHCO₃ で発泡することから確定する官能基は？',
       correct: 'カルボキシ基 (-COOH)',
       wrong: ['フェノール性 -OH', 'アルデヒド基 (-CHO)', 'エステル結合 (-COO-)'],
@@ -4629,7 +4629,7 @@ const CUSTOM_CLUES = {
     {
       reagent: '金属 Na ＆ 塩化鉄(III) (FeCl₃) 水溶液',
       effect: 'bubbles',
-      observation: '試料 X（C₇H₈O, 不飽和度4）は金属 Na と反応して H₂ を発生したが、FeCl₃ 水溶液では呈色せず NaOH にも溶けなかった！',
+      observation: '試料 X（C₇H₈O）は金属 Na と反応して H₂ を発生したが、FeCl₃ 水溶液では呈色せず NaOH にも溶けなかった！',
       question: 'Na 陽性・FeCl₃ 陰性であることから確定する -OH の種類は？',
       correct: 'アルコール性 -OH（芳香族アルコール：-CH₂OH）',
       wrong: ['フェノール性 -OH（クレゾール・フェノール）', 'エーテル結合（アニソール）', 'カルボキシ基 (-COOH)'],
@@ -4652,7 +4652,7 @@ const CUSTOM_CLUES = {
     {
       reagent: '塩化鉄(III) (FeCl₃) 水溶液',
       effect: 'purple',
-      observation: '試料 X（C₇H₈O, 不飽和度4）に FeCl₃ 水溶液を加えると、青紫色に呈色した！',
+      observation: '試料 X（C₇H₈O）に FeCl₃ 水溶液を加えると、青紫色に呈色した！',
       question: 'この結果から確定する官能基は？',
       correct: 'フェノール性ヒドロキシ基（ベンゼン環に直結した -OH）',
       wrong: ['アルコール性 -OH（ベンジルアルコール）', 'エーテル結合（アニソール）', 'カルボキシ基 (-COOH)'],
@@ -4675,7 +4675,7 @@ const CUSTOM_CLUES = {
     {
       reagent: '炭酸水素ナトリウム (NaHCO₃) 水溶液',
       effect: 'bubbles',
-      observation: '試料 X（C₇H₆O₃, 不飽和度5）は NaHCO₃ 水溶液と反応し、CO₂ の気泡を発生して溶けた！',
+      observation: '試料 X（C₇H₆O₃）は NaHCO₃ 水溶液と反応し、CO₂ の気泡を発生して溶けた！',
       question: 'この結果から含まれるとわかる官能基は？',
       correct: 'カルボキシ基 (-COOH)',
       wrong: ['エステル結合 (-COOCH₃)', 'エーテル結合', 'アミノ基 (-NH₂)'],
@@ -4698,7 +4698,7 @@ const CUSTOM_CLUES = {
     {
       reagent: 'FeCl₃ 水溶液 ＆ NaHCO₃ 水溶液',
       effect: 'purple',
-      observation: '試料 X（C₈H₈O₃, 不飽和度5）は FeCl₃ 水溶液で赤紫色に呈色したが、NaHCO₃ 水溶液では発泡しなかった！',
+      observation: '試料 X（C₈H₈O₃）は FeCl₃ 水溶液で赤紫色に呈色したが、NaHCO₃ 水溶液では発泡しなかった！',
       question: 'FeCl₃ 陽性・NaHCO₃ 陰性から読み取れる構造は？',
       correct: 'フェノール性 -OH は残っており、-COOH はエステル化されている',
       wrong: ['フェノール性 -OH がアセチル化され、-COOH が残っている（アスピリン）', '-COOH と -OH の両方が遊離している（サリチル酸）', 'どちらの官能基も持たない'],
@@ -4721,7 +4721,7 @@ const CUSTOM_CLUES = {
     {
       reagent: 'NaHCO₃ 水溶液 ＆ FeCl₃ 水溶液',
       effect: 'bubbles',
-      observation: '試料 X（C₉H₈O₄, 不飽和度6）は NaHCO₃ 水溶液で CO₂ を発泡して溶けたが、FeCl₃ 水溶液では呈色しなかった！',
+      observation: '試料 X（C₉H₈O₄）は NaHCO₃ 水溶液で CO₂ を発泡して溶けたが、FeCl₃ 水溶液では呈色しなかった！',
       question: 'NaHCO₃ 陽性・FeCl₃ 陰性からわかる構造は？',
       correct: '-COOH を持つが、遊離のフェノール性 -OH は持たない',
       wrong: ['遊離のフェノール性 -OH を持つ（サリチル酸メチル）', '-COOH を持たない中性エステル', 'フェノールそのもの'],
@@ -4744,7 +4744,7 @@ const CUSTOM_CLUES = {
     {
       reagent: 'NaHCO₃ ＆ FeCl₃ ＆ 銀鏡反応',
       effect: 'none',
-      observation: '試料 X（C₈H₈O₂, 不飽和度5）は NaHCO₃ で発泡せず、FeCl₃ 呈色も陰性、銀鏡反応も陰性であった。',
+      observation: '試料 X（C₈H₈O₂）は NaHCO₃ で発泡せず、FeCl₃ 呈色も陰性、銀鏡反応も陰性であった。',
       question: 'この結果から絞り込める C₈H₈O₂ の構造は？',
       correct: 'ギ酸エステル以外の中性芳香族エステル（酢酸フェニル or 安息香酸メチル）',
       wrong: ['フェニル酢酸（NaHCO₃ 陽性）', 'ギ酸ベンジル（銀鏡陽性）', 'o-ヒドロキシアセトフェノン（FeCl₃ 陽性）'],
@@ -4767,7 +4767,7 @@ const CUSTOM_CLUES = {
     {
       reagent: 'NaHCO₃ ＆ FeCl₃ ＆ 銀鏡反応',
       effect: 'none',
-      observation: '試料 X（C₈H₈O₂, 不飽和度5）は NaHCO₃ 陰性、FeCl₃ 陰性、銀鏡反応も陰性であった。',
+      observation: '試料 X（C₈H₈O₂）は NaHCO₃ 陰性、FeCl₃ 陰性、銀鏡反応も陰性であった。',
       question: 'この結果から絞り込める構造は？',
       correct: 'ギ酸エステル以外の中性芳香族エステル',
       wrong: ['芳香族カルボン酸（フェニル酢酸）', 'ギ酸ベンジル', 'フェノール性ケトン'],
@@ -4790,7 +4790,7 @@ const CUSTOM_CLUES = {
     {
       reagent: 'NaHCO₃ 水溶液 ＆ FeCl₃ 水溶液',
       effect: 'bubbles',
-      observation: '試料 X（C₈H₆O₄, 不飽和度6）は NaHCO₃ で CO₂ を発泡して溶け、FeCl₃ 呈色は陰性であった。',
+      observation: '試料 X（C₈H₆O₄）は NaHCO₃ で CO₂ を発泡して溶け、FeCl₃ 呈色は陰性であった。',
       question: '不飽和度6（ベンゼン環4 + 2）で NaHCO₃ 陽性であることからわかる構造は？',
       correct: '2つの -COOH を持つ芳香族ジカルボン酸',
       wrong: ['サリチル酸（FeCl₃ 陽性）', 'モノカルボン酸（不飽和度5）', 'フェノール類（NaHCO₃ 陰性）'],
@@ -4813,7 +4813,7 @@ const CUSTOM_CLUES = {
     {
       reagent: 'NaHCO₃ 水溶液 ＆ FeCl₃ 水溶液',
       effect: 'bubbles',
-      observation: '試料 X（C₈H₆O₄, 不飽和度6）は NaHCO₃ で CO₂ を発泡して溶け、FeCl₃ 呈色は陰性であった。',
+      observation: '試料 X（C₈H₆O₄）は NaHCO₃ で CO₂ を発泡して溶け、FeCl₃ 呈色は陰性であった。',
       question: 'この結果からわかる構造は？',
       correct: '芳香族ジカルボン酸 C₆H₄(COOH)₂',
       wrong: ['フェノール類', '芳香族エステル', '芳香族アルコール'],
@@ -4837,7 +4837,7 @@ const CUSTOM_CLUES = {
     {
       reagent: '希塩酸溶解 ＆ さらし粉呈色',
       effect: 'bleach_purple',
-      observation: '試料 X（C₆H₇N, 不飽和度4）は希塩酸によく溶け、さらし粉水溶液を加えると鮮やかな赤紫色に呈色した！',
+      observation: '試料 X（C₆H₇N）は希塩酸によく溶け、さらし粉水溶液を加えると鮮やかな赤紫色に呈色した！',
       question: '希塩酸に溶けてさらし粉で赤紫色に呈色する構造は？',
       correct: 'アニリン（ベンゼン環に -NH₂ が直結）',
       wrong: ['アセトアニリド（中性アミド・希HCl不溶）', 'ニトロベンゼン（中性・希HCl不溶）', 'フェノール（弱酸性・NaOH可溶）'],
@@ -4860,7 +4860,7 @@ const CUSTOM_CLUES = {
     {
       reagent: '希塩酸溶解 ＆ ジアゾカップリング',
       effect: 'none',
-      observation: '試料 X（C₈H₉NO, 不飽和度5）は希塩酸にも NaOH にも溶けない中性物質で、そのままではさらし粉呈色もジアゾカップリングも陰性だった！',
+      observation: '試料 X（C₈H₉NO）は希塩酸にも NaOH にも溶けない中性物質で、そのままではさらし粉呈色もジアゾカップリングも陰性だった！',
       question: '窒素を含みながら塩基性もジアゾ反応も示さない理由として有力な構造は？',
       correct: 'アミノ基がアセチル化されたアミド結合 (-NHCO-)',
       wrong: ['遊離の芳香族第1級アミン (-NH₂)', 'フェノールカルボン酸', '両性アミノ酸'],
@@ -4883,7 +4883,7 @@ const CUSTOM_CLUES = {
     {
       reagent: 'FeCl₃ 水溶液 ＆ NaOH / NaHCO₃ 溶解性',
       effect: 'purple',
-      observation: '試料 X（C₆H₇NO, 不飽和度4）は FeCl₃ で紫色に呈色し、NaOH に溶けるが NaHCO₃ では発泡しなかった！',
+      observation: '試料 X（C₆H₇NO）は FeCl₃ で紫色に呈色し、NaOH に溶けるが NaHCO₃ では発泡しなかった！',
       question: 'この結果から含まれるとわかる官能基は？',
       correct: 'フェノール性ヒドロキシ基 (-OH)（-COOH はなし）',
       wrong: ['カルボキシ基 (-COOH)', 'ニトロ基 (-NO₂)', 'アミド結合 (-NHCO-)'],
@@ -4906,7 +4906,7 @@ const CUSTOM_CLUES = {
     {
       reagent: 'NaHCO₃ 水溶液 ＆ FeCl₃ 水溶液',
       effect: 'bubbles',
-      observation: '試料 X（C₇H₇NO₂, 不飽和度5）は NaHCO₃ 水溶液で CO₂ を発泡して溶け、FeCl₃ 呈色は陰性であった！',
+      observation: '試料 X（C₇H₇NO₂）は NaHCO₃ 水溶液で CO₂ を発泡して溶け、FeCl₃ 呈色は陰性であった！',
       question: 'この結果から含まれるとわかる官能基は？',
       correct: 'カルボキシ基 (-COOH)（フェノール性 -OH なし）',
       wrong: ['フェノール性 -OH のみ', 'エステル結合', 'ニトロ基 (-NO₂)'],
@@ -4929,7 +4929,7 @@ const CUSTOM_CLUES = {
     {
       reagent: 'NaHCO₃・NaOH・希塩酸への溶解性',
       effect: 'none',
-      observation: '試料 X（C₆H₅NO₂, 不飽和度5）は淡黄色の油状液体で、水・NaOH・NaHCO₃・希塩酸のいずれにも溶けない中性物質であった！',
+      observation: '試料 X（C₆H₅NO₂）は淡黄色の油状液体で、水・NaOH・NaHCO₃・希塩酸のいずれにも溶けない中性物質であった！',
       question: 'N を含む芳香族化合物で、酸にも塩基にも溶けないことから除外できるのは？',
       correct: 'アミン (-NH₂)・カルボン酸 (-COOH)・フェノール (-OH) を除外',
       wrong: ['ニトロ基 (-NO₂) を除外', 'ベンゼン環を除外', '中性物質を除外'],
@@ -4982,9 +4982,10 @@ function buildExtraAdvancedStep(compound) {
   const t = compound.tests;
   const f = compound.formula;
   const usedNames = (CUSTOM_CLUES[compound.id] || []).map((s) => s.reagent).join(' ');
+  const confirmUsesNa = !(t.hydrolysis && t.hydrolysis.positive) && !(t.bromine && t.bromine.positive);
 
-  // 1) 金属Naが未出題なら金属Naで活性水素(-OH/-COOH)を確認
-  if (!usedNames.includes('金属 Na') && !usedNames.includes('金属ナトリウム')) {
+  // 1) Step 4で金属Naを使わない場合かつ未出題なら、金属Naで活性水素(-OH/-COOH)を確認
+  if (!confirmUsesNa && !usedNames.includes('金属 Na') && !usedNames.includes('金属ナトリウム')) {
     const pos = !!(t.sodium && t.sodium.positive);
     return {
       reagent: '追加実験：金属ナトリウム (Na) 投入',
@@ -7247,9 +7248,10 @@ function renderClueStep(isInitial = false) {
       'happy'
     );
   } else if (isInitial && state.clueIdx === 0) {
+    const ihdText = state.ihdChecked ? `（不飽和度 ${calcIHD(f)}）` : '（必要なら「📐 不飽和度(任意)」も確認できるぞ）';
     setDialogue(
       '👨‍🔬 教授',
-      `分子式は ${formatFormulaText(f)}（不飽和度 ${calcIHD(f)}）だね。\nわしが定性実験をしておいたぞ！レポートから「含まれる構造」を読み解いてくれたまえ！`,
+      `分子式は ${formatFormulaText(f)}${ihdText}。\nわしが定性実験をしておいたぞ！レポートから「含まれる構造」を読み解いてくれたまえ！`,
       'normal'
     );
   } else if (!alreadySolved) {
@@ -7359,7 +7361,7 @@ function showLabHint() {
   const ihd = calcIHD(f);
   if (!step) return;
 
-  let tip = `現在の分子式は ${formatFormulaText(f)}（不飽和度 ${ihd}）だ。`;
+  let tip = `現在の分子式は ${formatFormulaText(f)}${state.ihdChecked ? `（不飽和度 ${ihd}）` : ''}だ。`;
   if (step.reagent.includes('NaHCO₃')) {
     tip += ' NaHCO₃ で CO₂ を発泡するのはカルボン酸 (-COOH) だけ。フェノール類は発泡しないぞ！';
   } else if (step.reagent.includes('FeCl₃')) {
